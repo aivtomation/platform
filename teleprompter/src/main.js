@@ -179,11 +179,6 @@ function handleRemoteCommand(data) {
     speedSlider.value = currentSpeed;
     speedValue.textContent = currentSpeed;
   }
-  else if (data.type === 'SYNC') {
-    // Жорстка синхронізація позиції (для вирівнювання)
-    scrollPosition = data.position;
-    updatePrompterTransform();
-  }
 }
 
 // --- ОСНОВНА ЛОГІКА СУФЛЕРА ---
@@ -230,11 +225,6 @@ function scrollLoop() {
     return;
   }
 
-  // Якщо ми пульт, періодично відправляємо точну позицію для синхронізації
-  if (syncMode === 'remote' && Math.random() < 0.02) {
-    sendEvent({ type: 'SYNC', position: scrollPosition });
-  }
-  
   animationFrameId = requestAnimationFrame(scrollLoop);
 }
 
