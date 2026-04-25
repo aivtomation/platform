@@ -242,8 +242,8 @@ function scrollLoop() {
   scrollPosition -= speedFactor;
   updatePrompterTransform();
   
-  const textRect = prompterText.getBoundingClientRect();
-  if (textRect.bottom < 0) {
+  // Виходимо, коли текст прокрутився повністю (на всю свою висоту + половину екрану)
+  if (scrollPosition < -(prompterText.scrollHeight + window.innerHeight / 2)) {
     exitPrompter();
     return;
   }
