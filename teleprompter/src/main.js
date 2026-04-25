@@ -162,13 +162,22 @@ function handleRemoteCommand(data) {
   else if (data.type === 'PAUSE') {
     if (data.percentage !== undefined) setScrollPercentage(data.percentage);
     pausePrompter();
+    // Якщо ми Host, після паузи відправляємо точну позицію Пульту, щоб Пульт підлаштувався під нас, а не навпаки
+    if (syncMode === 'host') sendEvent({ type: 'SYNC_POS', percentage: getScrollPercentage() });
   }
   else if (data.type === 'RESUME') {
     if (data.percentage !== undefined) setScrollPercentage(data.percentage);
     resumePrompter();
+    if (syncMode === 'host') sendEvent({ type: 'SYNC_POS', percentage: getScrollPercentage() });
   }
   else if (data.type === 'SCROLL') {
     if (data.percentage !== undefined) setScrollPercentage(data.percentage);
+  }
+  else if (data.type === 'SCROLL_PCT') {
+    // Якщо Пульт крутить коліщатко, він надсилає відносну зміну
+    const currentPct = getScrollPercentage();
+    setScrollPercentage(currentPct + data.deltaPct);
+    if (syncMode === 'host') sendEvent({ type: 'SYNC_POS', percentage: getScrollPercentage() });
   }
   else if (data.type === 'SYNC_POS') {
     setScrollPercentage(data.percentage);
@@ -236,12 +245,14 @@ layoutSelect?.addEventListener('change', (e) => {
 
 function getScrollPercentage() {
   if (!prompterText || prompterText.scrollHeight === 0) return 0;
-  return (window.innerHeight * 0.1 - scrollPosition) / prompterText.scrollHeight;
+  // Вираховуємо відсоток прокрутки відносно ЦЕНТРУ екрану (найважливіша зона для читання)
+  return (window.innerHeight * 0.5 - scrollPosition) / prompterText.scrollHeight;
 }
 
 function setScrollPercentage(percentage) {
   if (!prompterText) return;
-  scrollPosition = window.innerHeight * 0.1 - (percentage * prompterText.scrollHeight);
+  // Встановлюємо позицію так, щоб той самий відсоток тексту опинився рівно по ЦЕНТРУ екрану
+  scrollPosition = window.innerHeight * 0.5 - (percentage * prompterText.scrollHeight);
   updatePrompterTransform();
 }
 
@@ -319,7 +330,13 @@ function resumePrompter() {
   if (!isPlaying) {
     isPlaying = true;
     if (voiceToggle && voiceToggle.checked && voiceStatusPrompter) voiceStatusPrompter.textContent = "🎤 Слухаю... (в роботі)";
-    sendEvent({ type: 'RESUME', percentage: getScrollPercentage() });
+    
+    if (syncMode === 'remote') {
+      sendEvent({ type: 'RESUME' }); // Пульт не нав'язує свою позицію
+    } else {
+      sendEvent({ type: 'RESUME', percentage: getScrollPercentage() }); // Екран диктує позицію
+    }
+    
     scrollLoop();
   }
 }
@@ -328,7 +345,12 @@ function pausePrompter() {
   isPlaying = false;
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
   if (voiceToggle && voiceToggle.checked && voiceStatusPrompter) voiceStatusPrompter.textContent = "🎤 Пауза. Скажіть 'Суфлер старт'";
-  sendEvent({ type: 'PAUSE', percentage: getScrollPercentage() });
+  
+  if (syncMode === 'remote') {
+    sendEvent({ type: 'PAUSE' }); // Пульт просто дає команду стоп, без нав'язування позиції
+  } else {
+    sendEvent({ type: 'PAUSE', percentage: getScrollPercentage() });
+  }
 }
 
 function exitPrompter() {
@@ -351,7 +373,13 @@ prompterContainer?.addEventListener('wheel', (e) => {
   // Коліщатко миші для прокрутки вгору/вниз
   scrollPosition -= e.deltaY;
   updatePrompterTransform();
-  sendEvent({ type: 'SCROLL', percentage: getScrollPercentage() }); // Відправляємо на екран відсоток
+  
+  if (syncMode === 'remote') {
+    const pctChange = (-e.deltaY) / prompterText.scrollHeight;
+    sendEvent({ type: 'SCROLL_PCT', deltaPct: pctChange });
+  } else {
+    sendEvent({ type: 'SCROLL', percentage: getScrollPercentage() });
+  }
 });
 
 let globalRecognition = null;
