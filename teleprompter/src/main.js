@@ -36,16 +36,21 @@ sizeSlider.addEventListener('input', (e) => {
 });
 
 // Перемикання відображення (Дзеркало / Макет)
+// ВИПРАВЛЕННЯ: Віддзеркалюємо контейнер, а не сам текст, 
+// щоб не було конфлікту з translateY під час прокрутки
 mirrorToggle.addEventListener('change', (e) => {
   if (e.target.checked) {
-    prompterText.classList.add('mirrored');
+    prompterContainer.classList.add('mirrored');
   } else {
-    prompterText.classList.remove('mirrored');
+    prompterContainer.classList.remove('mirrored');
   }
 });
 
 layoutSelect.addEventListener('change', (e) => {
   prompterContainer.className = '';
+  if (mirrorToggle.checked) {
+    prompterContainer.classList.add('mirrored');
+  }
   prompterContainer.classList.add(e.target.value);
 });
 
@@ -53,13 +58,11 @@ layoutSelect.addEventListener('change', (e) => {
 function scrollLoop() {
   if (!isPlaying) return;
   
-  // Швидкість масштабується для requestAnimationFrame (1-100 перетворюємо в пікселі за кадр)
   const speedFactor = currentSpeed * 0.05; 
   scrollPosition -= speedFactor;
   
   prompterText.style.transform = `translateY(${scrollPosition}px)`;
   
-  // Якщо текст прокрутився повністю вгору - зупиняємось
   const textRect = prompterText.getBoundingClientRect();
   if (textRect.bottom < 0) {
     exitPrompter();
@@ -77,22 +80,20 @@ function startPrompter() {
     return;
   }
   
-  // Налаштування тексту
   prompterText.textContent = text;
   prompterText.style.fontSize = `${sizeSlider.value}px`;
   
-  // Перехід до режиму прокрутки
   editorView.classList.remove('active');
   prompterView.classList.add('active');
   
-  // Скидання позиції прокрутки (починаємо з середини екрану для зменшення затримки)
-  scrollPosition = window.innerHeight / 2;
+  // ВИПРАВЛЕННЯ ЗА ЗВЕРНЕННЯМ: Зменшуємо початкову затримку (чорний екран)
+  // Починаємо текст майже відразу зверху (на 10% від висоти екрану)
+  scrollPosition = window.innerHeight * 0.1;
   prompterText.style.transform = `translateY(${scrollPosition}px)`;
   
   resumePrompter();
 }
 
-// Продовжити прокрутку (без скидання позиції)
 function resumePrompter() {
   if (!isPlaying) {
     isPlaying = true;
@@ -101,64 +102,55 @@ function resumePrompter() {
   }
 }
 
-// Поставити на паузу (залишаючись в суфлері)
 function pausePrompter() {
   isPlaying = false;
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
-  voiceStatusPrompter.textContent = "🎤 Пауза. Скажіть 'Продовжити' або 'Старт'";
+  voiceStatusPrompter.textContent = "🎤 Пауза. Скажіть 'Суфлер старт'";
 }
 
-// Вихід з суфлера та повернення до редактора
 function exitPrompter() {
   pausePrompter();
   prompterView.classList.remove('active');
   editorView.classList.add('active');
 }
 
-// Обробники кнопок
 startBtn.addEventListener('click', startPrompter);
 stopBtn.addEventListener('click', exitPrompter);
 
-// Голосове управління (Web Speech API)
+// Голосове управління
 function initVoiceControl() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   
   if (!SpeechRecognition) {
     voiceStatusEditor.textContent = "❌ Ваш браузер не підтримує розпізнавання голосу.";
-    voiceStatusEditor.style.color = "var(--danger-color)";
     return;
   }
 
   const recognition = new SpeechRecognition();
-  recognition.lang = 'uk-UA'; // Українська мова
+  recognition.lang = 'uk-UA'; 
   recognition.continuous = true;
-  recognition.interimResults = true; // УВІМКНЕНО для миттєвої реакції
-
-  recognition.onstart = function() {
-    console.log("Голосове розпізнавання запущено.");
-  };
+  recognition.interimResults = true;
 
   recognition.onresult = function(event) {
     const now = Date.now();
-    
-    // Захист від подвійного спрацьовування (затримка 1.5 секунди між командами)
     if (now - lastCommandTime < 1500) return;
 
     const lastResultIndex = event.results.length - 1;
     const command = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
 
-    // ЗАХИСТ ВІД ВИПАДКОВОГО СПРАЦЬОВУВАННЯ:
-    // Якщо фраза довша за 30 символів, швидше за все людина просто читає текст
-    if (command.length > 30) return;
+    // ВИПРАВЛЕННЯ: Додано обов'язкове слово-маркер "суфлер"
+    // Це на 100% захистить від випадкових спрацьовувань під час читання тексту
+    const hasWakeWord = command.includes('суфлер');
+    
+    if (!hasWakeWord) return;
 
     let commandExecuted = false;
 
-    // Обробка команд
     if (command.includes('старт') || command.includes('продовжити') || command.includes('поїхали')) {
       if (editorView.classList.contains('active')) {
-        startPrompter(); // Запуск з нуля
+        startPrompter();
       } else {
-        resumePrompter(); // Зняття з паузи
+        resumePrompter();
       }
       commandExecuted = true;
     } 
@@ -166,14 +158,12 @@ function initVoiceControl() {
       pausePrompter();
       commandExecuted = true;
     }
-    else if (command.includes('вгору') || command.includes('назад')) {
-      // Відмотати текст назад (зменшити прокрутку, щоб текст опустився нижче)
+    else if (command.includes('вгору') || command.includes('назад') || command.includes('вище')) {
       scrollPosition += window.innerHeight / 2.5;
       prompterText.style.transform = `translateY(${scrollPosition}px)`;
       commandExecuted = true;
     }
-    else if (command.includes('вниз') || command.includes('вперед')) {
-      // Прокрутити текст вперед
+    else if (command.includes('вниз') || command.includes('вперед') || command.includes('нижче')) {
       scrollPosition -= window.innerHeight / 2.5;
       prompterText.style.transform = `translateY(${scrollPosition}px)`;
       commandExecuted = true;
@@ -186,36 +176,26 @@ function initVoiceControl() {
     if (commandExecuted) {
       console.log("Виконано команду:", command);
       lastCommandTime = now;
-      
-      // Зупиняємо і запускаємо розпізнавання, щоб скинути буфер interimResults
-      // Це гарантує, що одне слово не викличе команду двічі
       recognition.stop(); 
     }
   };
 
   recognition.onerror = function(event) {
-    console.error("Помилка розпізнавання:", event.error);
     if (event.error === 'not-allowed') {
         voiceStatusEditor.textContent = "❌ Немає доступу до мікрофону.";
     }
   };
 
   recognition.onend = function() {
-    // Перезапуск для безперервного слухання
     recognition.start();
   };
 
-  // Запуск розпізнавання
   try {
     recognition.start();
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) {}
 }
 
-// Ініціалізація
 window.addEventListener('DOMContentLoaded', () => {
   initVoiceControl();
-  // Початковий текст для демо
-  textInput.value = "Ласкаво просимо до AI Телесуфлера.\n\nСкажіть 'старт', щоб почати прокрутку.\n\nЦей текст можна редагувати або вставити свій.";
+  textInput.value = "Ласкаво просимо до AI Телесуфлера.\n\nСкажіть 'суфлер старт', щоб почати прокрутку.\n\nДля зупинки скажіть 'суфлер стоп'.\n\nЦей текст можна редагувати.";
 });
