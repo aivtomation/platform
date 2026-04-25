@@ -153,25 +153,28 @@ btnConnect?.addEventListener('click', () => {
 // Обробка команд від пульта (тільки для режиму Host)
 function handleRemoteCommand(data) {
   if (data.type === 'START') {
-    textInput.value = data.text;
-    sizeSlider.value = data.size;
-    speedSlider.value = data.speed;
+    if (textInput) textInput.value = data.text;
+    if (sizeSlider) sizeSlider.value = data.size;
+    if (speedSlider) speedSlider.value = data.speed;
     updateUISettings();
     startPrompter();
   } 
   else if (data.type === 'PAUSE') {
-    scrollPosition = data.position;
+    if (data.percentage !== undefined) setScrollPercentage(data.percentage);
     pausePrompter();
-    updatePrompterTransform();
   }
   else if (data.type === 'RESUME') {
-    scrollPosition = data.position;
-    updatePrompterTransform();
+    if (data.percentage !== undefined) setScrollPercentage(data.percentage);
     resumePrompter();
   }
   else if (data.type === 'SCROLL') {
-    scrollPosition += data.deltaY;
-    updatePrompterTransform();
+    if (data.percentage !== undefined) setScrollPercentage(data.percentage);
+  }
+  else if (data.type === 'SYNC_POS') {
+    setScrollPercentage(data.percentage);
+  }
+  else if (data.type === 'SYNC_HEIGHT') {
+    window.hostScrollHeight = data.height;
   }
   else if (data.type === 'EXIT') {
     exitPrompter();
@@ -231,20 +234,47 @@ layoutSelect?.addEventListener('change', (e) => {
   prompterContainer.classList.add(e.target.value);
 });
 
+function getScrollPercentage() {
+  if (!prompterText || prompterText.scrollHeight === 0) return 0;
+  return (window.innerHeight * 0.1 - scrollPosition) / prompterText.scrollHeight;
+}
+
+function setScrollPercentage(percentage) {
+  if (!prompterText) return;
+  scrollPosition = window.innerHeight * 0.1 - (percentage * prompterText.scrollHeight);
+  updatePrompterTransform();
+}
+
 function updatePrompterTransform() {
-  prompterText.style.transform = `translateY(${scrollPosition}px)`;
+  if (prompterText) prompterText.style.transform = `translateY(${scrollPosition}px)`;
 }
 
 function scrollLoop() {
   if (!isPlaying) return;
   
-  const speedFactor = currentSpeed * 0.05; 
+  let speedFactor = currentSpeed * 0.05; 
+  // Якщо ми пульт, адаптуємо швидкість фізичної прокрутки до висоти екрану Host'а
+  if (syncMode === 'remote' && window.hostScrollHeight && prompterText) {
+    speedFactor = speedFactor * (prompterText.scrollHeight / window.hostScrollHeight);
+  }
+  
   scrollPosition -= speedFactor;
   updatePrompterTransform();
   
-  // Виходимо, коли текст прокрутився повністю (на всю свою висоту + половину екрану)
-  if (scrollPosition < -(prompterText.scrollHeight + window.innerHeight / 2)) {
-    exitPrompter();
+  // Транслюємо свою позицію для пульта 4 рази на секунду
+  if (syncMode === 'host' && conn && conn.open) {
+    if (!window.syncFrameCount) window.syncFrameCount = 0;
+    window.syncFrameCount++;
+    if (window.syncFrameCount % 15 === 0) {
+      sendEvent({ type: 'SYNC_POS', percentage: getScrollPercentage() });
+    }
+  }
+  
+  // Зупиняємо, коли текст прокрутився повністю до темного екрану
+  if (scrollPosition < -(prompterText.scrollHeight + window.innerHeight)) {
+    scrollPosition = -(prompterText.scrollHeight + window.innerHeight);
+    updatePrompterTransform();
+    pausePrompter();
     return;
   }
 
@@ -272,6 +302,13 @@ function startPrompter() {
     
     sendEvent({ type: 'START', text: text, speed: currentSpeed, size: sizeSlider ? sizeSlider.value : 40 });
     
+    // Якщо ми Екран (Host), надсилаємо свою висоту тексту пульту
+    if (syncMode === 'host') {
+      setTimeout(() => {
+        sendEvent({ type: 'SYNC_HEIGHT', height: prompterText ? prompterText.scrollHeight : 1 });
+      }, 100);
+    }
+    
     resumePrompter();
   } catch (err) {
     alert("Помилка запуску: " + err.message);
@@ -281,8 +318,8 @@ function startPrompter() {
 function resumePrompter() {
   if (!isPlaying) {
     isPlaying = true;
-    if (voiceToggle.checked) voiceStatusPrompter.textContent = "🎤 Слухаю... (в роботі)";
-    sendEvent({ type: 'RESUME', position: scrollPosition });
+    if (voiceToggle && voiceToggle.checked && voiceStatusPrompter) voiceStatusPrompter.textContent = "🎤 Слухаю... (в роботі)";
+    sendEvent({ type: 'RESUME', percentage: getScrollPercentage() });
     scrollLoop();
   }
 }
@@ -290,8 +327,8 @@ function resumePrompter() {
 function pausePrompter() {
   isPlaying = false;
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
-  if (voiceToggle.checked) voiceStatusPrompter.textContent = "🎤 Пауза. Скажіть 'Суфлер старт'";
-  sendEvent({ type: 'PAUSE', position: scrollPosition });
+  if (voiceToggle && voiceToggle.checked && voiceStatusPrompter) voiceStatusPrompter.textContent = "🎤 Пауза. Скажіть 'Суфлер старт'";
+  sendEvent({ type: 'PAUSE', percentage: getScrollPercentage() });
 }
 
 function exitPrompter() {
@@ -314,7 +351,7 @@ prompterContainer?.addEventListener('wheel', (e) => {
   // Коліщатко миші для прокрутки вгору/вниз
   scrollPosition -= e.deltaY;
   updatePrompterTransform();
-  sendEvent({ type: 'SCROLL', deltaY: -e.deltaY }); // Відправляємо на екран
+  sendEvent({ type: 'SCROLL', percentage: getScrollPercentage() }); // Відправляємо на екран відсоток
 });
 
 let globalRecognition = null;
@@ -375,13 +412,13 @@ function initVoiceControl() {
     else if (command.includes('вгору') || command.includes('назад') || command.includes('вище')) {
       scrollPosition += window.innerHeight / 2.5;
       updatePrompterTransform();
-      sendEvent({ type: 'SCROLL', deltaY: window.innerHeight / 2.5 });
+      sendEvent({ type: 'SCROLL', percentage: getScrollPercentage() });
       commandExecuted = true;
     }
     else if (command.includes('вниз') || command.includes('вперед') || command.includes('нижче')) {
       scrollPosition -= window.innerHeight / 2.5;
       updatePrompterTransform();
-      sendEvent({ type: 'SCROLL', deltaY: -(window.innerHeight / 2.5) });
+      sendEvent({ type: 'SCROLL', percentage: getScrollPercentage() });
       commandExecuted = true;
     }
     else if (command.includes('редактор') || command.includes('вихід')) {

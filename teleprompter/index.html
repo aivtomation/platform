@@ -24,6 +24,29 @@
         
         <main class="editor-main">
           <div class="control-panel glass-panel">
+            <div class="control-group remote-group" style="margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+              <label>Віддалене керування (Синхронізація)</label>
+              <div class="remote-buttons">
+                <button id="btn-mode-local" class="btn-secondary active">Автономно</button>
+                <button id="btn-mode-host" class="btn-secondary">Екран (Телефон)</button>
+                <button id="btn-mode-remote" class="btn-secondary">Пульт (ПК)</button>
+              </div>
+              
+              <!-- Панель Екрану -->
+              <div id="host-panel" class="remote-panel hidden">
+                <p>Код для підключення пульта:</p>
+                <h3 id="host-code">----</h3>
+                <p id="host-status" class="status waiting">Очікування пульта...</p>
+              </div>
+
+              <!-- Панель Пульта -->
+              <div id="remote-panel" class="remote-panel hidden">
+                <input type="text" id="remote-code-input" placeholder="Введіть код з екрану (4 цифри)" maxlength="4" style="width: 100%; text-align: center; font-size: 1.2rem; letter-spacing: 5px; margin-bottom: 0.5rem;">
+                <button id="btn-connect" class="btn-primary" style="padding: 0.5rem; font-size: 1rem; width: 100%; margin-top: 0;">Підключитись</button>
+                <p id="remote-status" class="status" style="margin-top: 0.5rem;">Не підключено</p>
+              </div>
+            </div>
+
             <h2>Налаштування</h2>
             <div class="control-group">
               <label for="speed-slider">Швидкість прокрутки: <span id="speed-value">18</span></label>
@@ -64,28 +87,7 @@
               <span class="toggle-label" style="color: var(--accent-color); font-weight: 600;">🎤 Голосове керування</span>
             </div>
             
-            <div class="control-group remote-group">
-              <label>Віддалене керування (Синхронізація)</label>
-              <div class="remote-buttons">
-                <button id="btn-mode-local" class="btn-secondary active">Автономно</button>
-                <button id="btn-mode-host" class="btn-secondary">Екран (Телефон)</button>
-                <button id="btn-mode-remote" class="btn-secondary">Пульт (ПК)</button>
-              </div>
-              
-              <!-- Панель Екрану -->
-              <div id="host-panel" class="remote-panel hidden">
-                <p>Код для підключення пульта:</p>
-                <h3 id="host-code">----</h3>
-                <p id="host-status" class="status waiting">Очікування пульта...</p>
-              </div>
 
-              <!-- Панель Пульта -->
-              <div id="remote-panel" class="remote-panel hidden">
-                <input type="text" id="remote-code-input" placeholder="Введіть код з екрану (4 цифри)" maxlength="4" style="width: 100%; text-align: center; font-size: 1.2rem; letter-spacing: 5px; margin-bottom: 0.5rem;">
-                <button id="btn-connect" class="btn-primary" style="padding: 0.5rem; font-size: 1rem; width: 100%; margin-top: 0;">Підключитись</button>
-                <p id="remote-status" class="status" style="margin-top: 0.5rem;">Не підключено</p>
-              </div>
-            </div>
 
             <button id="start-btn" class="btn-primary">Запустити</button>
             <div id="voice-indicator-editor" class="voice-status" style="display: none;">🎤 Голосове управління активно</div>
