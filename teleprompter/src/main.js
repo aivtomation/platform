@@ -442,13 +442,13 @@ window.addEventListener('DOMContentLoaded', () => {
     // Розумні налаштування за замовчуванням
     const isMobile = window.innerWidth < 768 || navigator.userAgent.match(/Mobi/i);
     if (isMobile) {
-      mirrorX.checked = true;
-      mirrorY.checked = true;
-      layoutSelect.value = 'layout-left';
+      if (mirrorX) mirrorX.checked = false;
+      if (mirrorY) mirrorY.checked = true;
+      if (layoutSelect) layoutSelect.value = 'layout-left';
     } else {
-      mirrorX.checked = false;
-      mirrorY.checked = false;
-      layoutSelect.value = 'layout-full';
+      if (mirrorX) mirrorX.checked = false;
+      if (mirrorY) mirrorY.checked = false;
+      if (layoutSelect) layoutSelect.value = 'layout-full';
     }
     
     if (mirrorX && mirrorX.checked) prompterContainer?.classList.add('mirrored-x');
