@@ -347,8 +347,16 @@ textarea::placeholder {
   will-change: transform;
 }
 
-.mirrored {
+.mirrored-x {
   transform: scaleX(-1);
+}
+
+.mirrored-y {
+  transform: scaleY(-1);
+}
+
+.mirrored-x.mirrored-y {
+  transform: scale(-1, -1);
 }
 
 .prompter-overlay {
@@ -357,11 +365,30 @@ textarea::placeholder {
   right: 2rem;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: center;
   gap: 1rem;
   z-index: 100;
   opacity: 0.3;
   transition: opacity 0.3s;
+}
+
+.prompter-speed-control {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 1rem 0.5rem;
+  border-radius: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid var(--accent-color);
+}
+
+#prompter-speed-slider {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  writing-mode: bt-lr;
+  width: 8px;
+  height: 150px;
+  accent-color: var(--accent-color);
 }
 
 .prompter-overlay:hover {

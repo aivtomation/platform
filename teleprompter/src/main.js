@@ -12,8 +12,10 @@ const speedSlider = document.getElementById('speed-slider');
 const speedValue = document.getElementById('speed-value');
 const sizeSlider = document.getElementById('size-slider');
 const sizeValue = document.getElementById('size-value');
-const mirrorToggle = document.getElementById('mirror-toggle');
+const mirrorX = document.getElementById('mirror-x');
+const mirrorY = document.getElementById('mirror-y');
 const layoutSelect = document.getElementById('layout-select');
+const prompterSpeedSlider = document.getElementById('prompter-speed-slider');
 const voiceStatusEditor = document.getElementById('voice-indicator-editor');
 const voiceStatusPrompter = document.getElementById('voice-status');
 
@@ -33,7 +35,7 @@ const remoteStatus = document.getElementById('remote-status');
 let isPlaying = false;
 let scrollPosition = 0;
 let animationFrameId = null;
-let currentSpeed = 20;
+let currentSpeed = 18;
 let lastCommandTime = 0;
 
 // Стан мережі (PeerJS)
@@ -138,7 +140,6 @@ btnConnect.addEventListener('click', () => {
   conn.on('open', () => {
     remoteStatus.textContent = "Підключено! Тепер ви керуєте екраном.";
     remoteStatus.className = "status connected";
-    // Одразу відправляємо поточні налаштування на екран
     sendEvent({ type: 'UPDATE_SETTINGS', speed: currentSpeed, size: sizeSlider.value });
   });
 
@@ -177,6 +178,7 @@ function handleRemoteCommand(data) {
   else if (data.type === 'SPEED_CHANGE') {
     currentSpeed = data.speed;
     speedSlider.value = currentSpeed;
+    prompterSpeedSlider.value = currentSpeed;
     speedValue.textContent = currentSpeed;
   }
 }
@@ -191,20 +193,40 @@ function updateUISettings() {
 }
 
 speedSlider.addEventListener('input', (e) => {
+  currentSpeed = parseInt(e.target.value);
+  prompterSpeedSlider.value = currentSpeed;
   updateUISettings();
   sendEvent({ type: 'SPEED_CHANGE', speed: currentSpeed });
 });
 
+prompterSpeedSlider.addEventListener('input', (e) => {
+  currentSpeed = parseInt(e.target.value);
+  speedSlider.value = currentSpeed;
+  updateUISettings();
+  sendEvent({ type: 'SPEED_CHANGE', speed: currentSpeed });
+});
+
+// Щоб клік по повзунку швидкості не ставив на паузу суфлер
+prompterSpeedSlider.addEventListener('click', (e) => e.stopPropagation());
+prompterSpeedSlider.addEventListener('mousedown', (e) => e.stopPropagation());
+prompterSpeedSlider.addEventListener('touchstart', (e) => e.stopPropagation());
+
 sizeSlider.addEventListener('input', updateUISettings);
 
-mirrorToggle.addEventListener('change', (e) => {
-  if (e.target.checked) prompterContainer.classList.add('mirrored');
-  else prompterContainer.classList.remove('mirrored');
+mirrorX.addEventListener('change', (e) => {
+  if (e.target.checked) prompterContainer.classList.add('mirrored-x');
+  else prompterContainer.classList.remove('mirrored-x');
+});
+
+mirrorY.addEventListener('change', (e) => {
+  if (e.target.checked) prompterContainer.classList.add('mirrored-y');
+  else prompterContainer.classList.remove('mirrored-y');
 });
 
 layoutSelect.addEventListener('change', (e) => {
   prompterContainer.className = '';
-  if (mirrorToggle.checked) prompterContainer.classList.add('mirrored');
+  if (mirrorX.checked) prompterContainer.classList.add('mirrored-x');
+  if (mirrorY.checked) prompterContainer.classList.add('mirrored-y');
   prompterContainer.classList.add(e.target.value);
 });
 
@@ -324,6 +346,7 @@ function initVoiceControl() {
     else if (command.includes('швидше') || command.includes('скоріше')) {
       currentSpeed = Math.min(100, currentSpeed + 10);
       speedSlider.value = currentSpeed;
+      prompterSpeedSlider.value = currentSpeed;
       updateUISettings();
       sendEvent({ type: 'SPEED_CHANGE', speed: currentSpeed });
       commandExecuted = true;
@@ -331,6 +354,7 @@ function initVoiceControl() {
     else if (command.includes('повільніше') || command.includes('повільніш')) {
       currentSpeed = Math.max(1, currentSpeed - 10);
       speedSlider.value = currentSpeed;
+      prompterSpeedSlider.value = currentSpeed;
       updateUISettings();
       sendEvent({ type: 'SPEED_CHANGE', speed: currentSpeed });
       commandExecuted = true;
@@ -364,5 +388,8 @@ function initVoiceControl() {
 
 window.addEventListener('DOMContentLoaded', () => {
   initVoiceControl();
+  if (mirrorX.checked) prompterContainer.classList.add('mirrored-x');
+  if (mirrorY.checked) prompterContainer.classList.add('mirrored-y');
+  prompterContainer.classList.add(layoutSelect.value);
   textInput.value = "Ласкаво просимо до AI Телесуфлера.\n\nТепер ви можете використовувати комп'ютер як пульт для телефону.\n\nКоманди:\n- суфлер старт\n- суфлер стоп\n- суфлер швидше\n- суфлер повільніше";
 });
