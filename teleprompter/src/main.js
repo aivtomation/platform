@@ -375,7 +375,7 @@ prompterContainer?.addEventListener('wheel', (e) => {
   updatePrompterTransform();
   
   if (syncMode === 'remote') {
-    const pctChange = (-e.deltaY) / prompterText.scrollHeight;
+    const pctChange = e.deltaY / prompterText.scrollHeight;
     sendEvent({ type: 'SCROLL_PCT', deltaPct: pctChange });
   } else {
     sendEvent({ type: 'SCROLL', percentage: getScrollPercentage() });
