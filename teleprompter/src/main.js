@@ -18,6 +18,7 @@ const layoutSelect = document.getElementById('layout-select');
 const prompterSpeedSlider = document.getElementById('prompter-speed-slider');
 const voiceStatusEditor = document.getElementById('voice-indicator-editor');
 const voiceStatusPrompter = document.getElementById('voice-status');
+const voiceToggle = document.getElementById('voice-toggle');
 
 // Елементи для пульта
 const btnModeLocal = document.getElementById('btn-mode-local');
@@ -251,30 +252,34 @@ function scrollLoop() {
 }
 
 function startPrompter() {
-  const text = textInput.value.trim();
-  if (!text) {
-    alert("Будь ласка, введіть текст для прокрутки.");
-    return;
+  try {
+    const text = textInput.value.trim();
+    if (!text) {
+      alert("Будь ласка, введіть текст для прокрутки.");
+      return;
+    }
+    
+    prompterText.textContent = text;
+    prompterText.style.fontSize = `${sizeSlider.value}px`;
+    
+    editorView.classList.remove('active');
+    prompterView.classList.add('active');
+    
+    scrollPosition = window.innerHeight * 0.1;
+    updatePrompterTransform();
+    
+    sendEvent({ type: 'START', text: text, speed: currentSpeed, size: sizeSlider.value });
+    
+    resumePrompter();
+  } catch (err) {
+    alert("Помилка запуску: " + err.message);
   }
-  
-  prompterText.textContent = text;
-  prompterText.style.fontSize = `${sizeSlider.value}px`;
-  
-  editorView.classList.remove('active');
-  prompterView.classList.add('active');
-  
-  scrollPosition = window.innerHeight * 0.1;
-  updatePrompterTransform();
-  
-  sendEvent({ type: 'START', text: text, speed: currentSpeed, size: sizeSlider.value });
-  
-  resumePrompter();
 }
 
 function resumePrompter() {
   if (!isPlaying) {
     isPlaying = true;
-    voiceStatusPrompter.textContent = "🎤 Слухаю... (в роботі)";
+    if (voiceToggle.checked) voiceStatusPrompter.textContent = "🎤 Слухаю... (в роботі)";
     sendEvent({ type: 'RESUME', position: scrollPosition });
     scrollLoop();
   }
@@ -283,7 +288,7 @@ function resumePrompter() {
 function pausePrompter() {
   isPlaying = false;
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
-  voiceStatusPrompter.textContent = "🎤 Пауза. Скажіть 'Суфлер старт'";
+  if (voiceToggle.checked) voiceStatusPrompter.textContent = "🎤 Пауза. Скажіть 'Суфлер старт'";
   sendEvent({ type: 'PAUSE', position: scrollPosition });
 }
 
@@ -310,17 +315,23 @@ prompterContainer.addEventListener('wheel', (e) => {
   sendEvent({ type: 'SCROLL', deltaY: -e.deltaY }); // Відправляємо на екран
 });
 
+let globalRecognition = null;
+
 // Голосове управління (тільки якщо Автономно або ми Пульт)
 function initVoiceControl() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) return;
+  if (!SpeechRecognition) {
+    alert("Ваш браузер не підтримує голосове керування (або воно заблоковано).");
+    voiceToggle.checked = false;
+    return;
+  }
 
-  const recognition = new SpeechRecognition();
-  recognition.lang = 'uk-UA'; 
-  recognition.continuous = true;
-  recognition.interimResults = true;
+  globalRecognition = new SpeechRecognition();
+  globalRecognition.lang = 'uk-UA'; 
+  globalRecognition.continuous = true;
+  globalRecognition.interimResults = true;
 
-  recognition.onresult = function(event) {
+  globalRecognition.onresult = function(event) {
     if (syncMode === 'host') return; // Екран не слухає команди, він тільки показує
 
     const now = Date.now();
@@ -378,17 +389,48 @@ function initVoiceControl() {
 
     if (commandExecuted) {
       lastCommandTime = now;
-      recognition.stop(); 
+      globalRecognition.stop(); 
     }
   };
 
-  recognition.onend = function() { recognition.start(); };
-  try { recognition.start(); } catch(e) {}
+  globalRecognition.onerror = function(event) {
+    if (event.error === 'not-allowed') {
+        alert("Немає доступу до мікрофону.");
+        voiceToggle.checked = false;
+        voiceStatusEditor.style.display = 'none';
+        voiceStatusPrompter.style.display = 'none';
+    }
+  };
+
+  globalRecognition.onend = function() {
+    if (voiceToggle.checked) {
+       globalRecognition.start();
+    }
+  };
+
+  try { 
+    globalRecognition.start(); 
+    voiceStatusEditor.style.display = 'block';
+    voiceStatusPrompter.style.display = 'block';
+  } catch(e) {
+    alert("Помилка старту мікрофону: " + e.message);
+    voiceToggle.checked = false;
+  }
 }
 
+voiceToggle.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    initVoiceControl();
+  } else {
+    if (globalRecognition) {
+      globalRecognition.stop();
+    }
+    voiceStatusEditor.style.display = 'none';
+    voiceStatusPrompter.style.display = 'none';
+  }
+});
+
 window.addEventListener('DOMContentLoaded', () => {
-  initVoiceControl();
-  
   // Розумні налаштування за замовчуванням
   const isMobile = window.innerWidth < 768 || navigator.userAgent.match(/Mobi/i);
   if (isMobile) {

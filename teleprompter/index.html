@@ -18,7 +18,7 @@
         <header>
           <div class="header-content">
             <h1>AI Teleprompter</h1>
-            <p class="subtitle">Голосові команди: <strong>"суфлер старт"</strong>, <strong>"суфлер стоп"</strong>, <strong>"суфлер швидше"</strong>, <strong>"суфлер вгору"</strong></p>
+            <p class="subtitle">Універсальний телесуфлер з віддаленим керуванням</p>
           </div>
         </header>
         
@@ -56,6 +56,14 @@
               </select>
             </div>
             
+            <div class="control-group row-group" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+              <label class="toggle-switch">
+                <input type="checkbox" id="voice-toggle">
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label" style="color: var(--accent-color); font-weight: 600;">🎤 Голосове керування</span>
+            </div>
+            
             <div class="control-group remote-group">
               <label>Віддалене керування (Синхронізація)</label>
               <div class="remote-buttons">
@@ -80,7 +88,7 @@
             </div>
 
             <button id="start-btn" class="btn-primary">Запустити</button>
-            <div id="voice-indicator-editor" class="voice-status">🎤 Голосове управління активно</div>
+            <div id="voice-indicator-editor" class="voice-status" style="display: none;">🎤 Голосове управління активно</div>
           </div>
           
           <div class="editor-container glass-panel">
@@ -101,7 +109,7 @@
           <button id="stop-btn" class="btn-icon" title="Зупинити / Редагувати">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
           </button>
-          <div id="voice-status" class="voice-status listening">🎤 Слухаю...</div>
+          <div id="voice-status" class="voice-status listening" style="display: none;">🎤 Слухаю...</div>
         </div>
       </div>
     </div>
