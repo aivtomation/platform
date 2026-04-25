@@ -22,6 +22,7 @@ let isPlaying = false;
 let scrollPosition = 0;
 let animationFrameId = null;
 let currentSpeed = 20;
+let lastCommandTime = 0;
 
 // Оновлення значень в UI
 speedSlider.addEventListener('input', (e) => {
@@ -58,17 +59,17 @@ function scrollLoop() {
   
   prompterText.style.transform = `translateY(${scrollPosition}px)`;
   
-  // Якщо текст прокрутився повністю вгору - зупиняємось (опціонально: або циклічно)
+  // Якщо текст прокрутився повністю вгору - зупиняємось
   const textRect = prompterText.getBoundingClientRect();
   if (textRect.bottom < 0) {
-    stopPrompter();
+    exitPrompter();
     return;
   }
   
   animationFrameId = requestAnimationFrame(scrollLoop);
 }
 
-// Запуск суфлера
+// Запуск суфлера з РЕДАКТОРА (з самого початку)
 function startPrompter() {
   const text = textInput.value.trim();
   if (!text) {
@@ -84,26 +85,39 @@ function startPrompter() {
   editorView.classList.remove('active');
   prompterView.classList.add('active');
   
-  // Скидання позиції прокрутки (починаємо знизу екрану)
-  scrollPosition = window.innerHeight;
+  // Скидання позиції прокрутки (починаємо з середини екрану для зменшення затримки)
+  scrollPosition = window.innerHeight / 2;
   prompterText.style.transform = `translateY(${scrollPosition}px)`;
   
-  isPlaying = true;
-  scrollLoop();
+  resumePrompter();
 }
 
-// Зупинка суфлера та повернення до редактора
-function stopPrompter() {
+// Продовжити прокрутку (без скидання позиції)
+function resumePrompter() {
+  if (!isPlaying) {
+    isPlaying = true;
+    voiceStatusPrompter.textContent = "🎤 Слухаю... (в роботі)";
+    scrollLoop();
+  }
+}
+
+// Поставити на паузу (залишаючись в суфлері)
+function pausePrompter() {
   isPlaying = false;
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
-  
+  voiceStatusPrompter.textContent = "🎤 Пауза. Скажіть 'Продовжити' або 'Старт'";
+}
+
+// Вихід з суфлера та повернення до редактора
+function exitPrompter() {
+  pausePrompter();
   prompterView.classList.remove('active');
   editorView.classList.add('active');
 }
 
 // Обробники кнопок
 startBtn.addEventListener('click', startPrompter);
-stopBtn.addEventListener('click', stopPrompter);
+stopBtn.addEventListener('click', exitPrompter);
 
 // Голосове управління (Web Speech API)
 function initVoiceControl() {
@@ -118,41 +132,64 @@ function initVoiceControl() {
   const recognition = new SpeechRecognition();
   recognition.lang = 'uk-UA'; // Українська мова
   recognition.continuous = true;
-  recognition.interimResults = false;
+  recognition.interimResults = true; // УВІМКНЕНО для миттєвої реакції
 
   recognition.onstart = function() {
     console.log("Голосове розпізнавання запущено.");
   };
 
   recognition.onresult = function(event) {
+    const now = Date.now();
+    
+    // Захист від подвійного спрацьовування (затримка 1.5 секунди між командами)
+    if (now - lastCommandTime < 1500) return;
+
     const lastResultIndex = event.results.length - 1;
     const command = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
-    
-    console.log("Отримана команда:", command);
+
+    // ЗАХИСТ ВІД ВИПАДКОВОГО СПРАЦЬОВУВАННЯ:
+    // Якщо фраза довша за 30 символів, швидше за все людина просто читає текст
+    if (command.length > 30) return;
+
+    let commandExecuted = false;
 
     // Обробка команд
-    if (command.includes('старт')) {
-      if (!isPlaying) startPrompter();
-      else isPlaying = true; // Якщо був на паузі
+    if (command.includes('старт') || command.includes('продовжити') || command.includes('поїхали')) {
+      if (editorView.classList.contains('active')) {
+        startPrompter(); // Запуск з нуля
+      } else {
+        resumePrompter(); // Зняття з паузи
+      }
+      commandExecuted = true;
     } 
     else if (command.includes('стоп') || command.includes('пауза')) {
-      if (isPlaying) {
-        isPlaying = false;
-        voiceStatusPrompter.textContent = "🎤 Пауза... Скажіть 'Старт'";
-      }
+      pausePrompter();
+      commandExecuted = true;
     }
     else if (command.includes('вгору') || command.includes('назад')) {
-      // Відмотати текст трохи назад
-      scrollPosition += window.innerHeight / 2;
+      // Відмотати текст назад (зменшити прокрутку, щоб текст опустився нижче)
+      scrollPosition += window.innerHeight / 2.5;
       prompterText.style.transform = `translateY(${scrollPosition}px)`;
+      commandExecuted = true;
     }
     else if (command.includes('вниз') || command.includes('вперед')) {
-      // Прокрутити текст трохи вперед
-      scrollPosition -= window.innerHeight / 2;
+      // Прокрутити текст вперед
+      scrollPosition -= window.innerHeight / 2.5;
       prompterText.style.transform = `translateY(${scrollPosition}px)`;
+      commandExecuted = true;
     }
     else if (command.includes('редактор') || command.includes('вихід')) {
-      stopPrompter();
+      exitPrompter();
+      commandExecuted = true;
+    }
+
+    if (commandExecuted) {
+      console.log("Виконано команду:", command);
+      lastCommandTime = now;
+      
+      // Зупиняємо і запускаємо розпізнавання, щоб скинути буфер interimResults
+      // Це гарантує, що одне слово не викличе команду двічі
+      recognition.stop(); 
     }
   };
 
