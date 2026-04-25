@@ -174,9 +174,8 @@ function handleRemoteCommand(data) {
     if (data.percentage !== undefined) setScrollPercentage(data.percentage);
   }
   else if (data.type === 'SCROLL_PCT') {
-    // Якщо Пульт крутить коліщатко, він надсилає відносну зміну
-    const currentPct = getScrollPercentage();
-    setScrollPercentage(currentPct + data.deltaPct);
+    // Якщо Пульт крутить коліщатко, він надсилає свою нову абсолютну позицію
+    setScrollPercentage(data.percentage);
     if (syncMode === 'host') sendEvent({ type: 'SYNC_POS', percentage: getScrollPercentage() });
   }
   else if (data.type === 'SYNC_POS') {
@@ -370,13 +369,23 @@ prompterContainer?.addEventListener('click', () => {
 });
 
 prompterContainer?.addEventListener('wheel', (e) => {
-  // Коліщатко миші для прокрутки вгору/вниз
-  scrollPosition -= e.deltaY;
+  // Правило користувача:
+  // Якщо дзеркало вимкнено (mirrorY == false), коліщатко до себе (e.deltaY > 0) -> текст йде ВНИЗ.
+  // Якщо дзеркало ввімкнено (mirrorY == true), коліщатко до себе (e.deltaY > 0) -> текст йде ВГОРУ.
+  
+  if (mirrorY && mirrorY.checked) {
+    // Ввімкнені тумблери -> текст ВГОРУ
+    scrollPosition += e.deltaY;
+  } else {
+    // Вимкнені тумблери (або ПК) -> текст ВНИЗ (нормальна прокрутка)
+    scrollPosition -= e.deltaY;
+  }
+  
   updatePrompterTransform();
   
   if (syncMode === 'remote') {
-    const pctChange = e.deltaY / prompterText.scrollHeight;
-    sendEvent({ type: 'SCROLL_PCT', deltaPct: pctChange });
+    // Пульт відправляє нову абсолютну позицію
+    sendEvent({ type: 'SCROLL_PCT', percentage: getScrollPercentage() });
   } else {
     sendEvent({ type: 'SCROLL', percentage: getScrollPercentage() });
   }
