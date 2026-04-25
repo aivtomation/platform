@@ -36,8 +36,6 @@ sizeSlider.addEventListener('input', (e) => {
 });
 
 // Перемикання відображення (Дзеркало / Макет)
-// ВИПРАВЛЕННЯ: Віддзеркалюємо контейнер, а не сам текст, 
-// щоб не було конфлікту з translateY під час прокрутки
 mirrorToggle.addEventListener('change', (e) => {
   if (e.target.checked) {
     prompterContainer.classList.add('mirrored');
@@ -72,7 +70,7 @@ function scrollLoop() {
   animationFrameId = requestAnimationFrame(scrollLoop);
 }
 
-// Запуск суфлера з РЕДАКТОРА (з самого початку)
+// Запуск суфлера з РЕДАКТОРА
 function startPrompter() {
   const text = textInput.value.trim();
   if (!text) {
@@ -86,8 +84,6 @@ function startPrompter() {
   editorView.classList.remove('active');
   prompterView.classList.add('active');
   
-  // ВИПРАВЛЕННЯ ЗА ЗВЕРНЕННЯМ: Зменшуємо початкову затримку (чорний екран)
-  // Починаємо текст майже відразу зверху (на 10% від висоти екрану)
   scrollPosition = window.innerHeight * 0.1;
   prompterText.style.transform = `translateY(${scrollPosition}px)`;
   
@@ -117,6 +113,18 @@ function exitPrompter() {
 startBtn.addEventListener('click', startPrompter);
 stopBtn.addEventListener('click', exitPrompter);
 
+// ЛОКАЛЬНЕ КЕРУВАННЯ МИШКОЮ В РЕЖИМІ СУФЛЕРА
+prompterContainer.addEventListener('click', () => {
+  if (isPlaying) pausePrompter();
+  else resumePrompter();
+});
+
+prompterContainer.addEventListener('wheel', (e) => {
+  // Коліщатко миші для прокрутки вгору/вниз
+  scrollPosition -= e.deltaY;
+  prompterText.style.transform = `translateY(${scrollPosition}px)`;
+});
+
 // Голосове управління
 function initVoiceControl() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -138,24 +146,30 @@ function initVoiceControl() {
     const lastResultIndex = event.results.length - 1;
     const command = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
 
-    // ВИПРАВЛЕННЯ: Додано обов'язкове слово-маркер "суфлер"
-    // Це на 100% захистить від випадкових спрацьовувань під час читання тексту
     const hasWakeWord = command.includes('суфлер');
-    
-    if (!hasWakeWord) return;
+    if (!hasWakeWord || command.length > 30) return;
 
     let commandExecuted = false;
 
     if (command.includes('старт') || command.includes('продовжити') || command.includes('поїхали')) {
-      if (editorView.classList.contains('active')) {
-        startPrompter();
-      } else {
-        resumePrompter();
-      }
+      if (editorView.classList.contains('active')) startPrompter();
+      else resumePrompter();
       commandExecuted = true;
     } 
     else if (command.includes('стоп') || command.includes('пауза')) {
       pausePrompter();
+      commandExecuted = true;
+    }
+    else if (command.includes('швидше') || command.includes('скоріше')) {
+      currentSpeed = Math.min(100, currentSpeed + 10);
+      speedSlider.value = currentSpeed;
+      speedValue.textContent = currentSpeed;
+      commandExecuted = true;
+    }
+    else if (command.includes('повільніше') || command.includes('повільніш')) {
+      currentSpeed = Math.max(1, currentSpeed - 10);
+      speedSlider.value = currentSpeed;
+      speedValue.textContent = currentSpeed;
       commandExecuted = true;
     }
     else if (command.includes('вгору') || command.includes('назад') || command.includes('вище')) {
@@ -197,5 +211,5 @@ function initVoiceControl() {
 
 window.addEventListener('DOMContentLoaded', () => {
   initVoiceControl();
-  textInput.value = "Ласкаво просимо до AI Телесуфлера.\n\nСкажіть 'суфлер старт', щоб почати прокрутку.\n\nДля зупинки скажіть 'суфлер стоп'.\n\nЦей текст можна редагувати.";
+  textInput.value = "Ласкаво просимо до AI Телесуфлера.\n\nСкажіть 'суфлер старт', щоб почати прокрутку.\n\nКоманди:\n- суфлер стоп\n- суфлер швидше\n- суфлер повільніше\n- суфлер вгору / вниз";
 });
