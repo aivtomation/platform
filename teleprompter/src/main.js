@@ -76,9 +76,9 @@ btnModeLocal?.addEventListener('click', () => setSyncMode('local'));
 btnModeHost?.addEventListener('click', () => setSyncMode('host'));
 btnModeRemote?.addEventListener('click', () => setSyncMode('remote'));
 
-// Функція для надсилання подій (працює тільки якщо ми - Пульт)
+// Функція для надсилання подій
 function sendEvent(data) {
-  if (syncMode === 'remote' && conn && conn.open) {
+  if (conn && conn.open) {
     conn.send(data);
   }
 }
@@ -267,30 +267,43 @@ function updatePrompterTransform() {
   if (prompterText) prompterText.style.transform = `translateY(${scrollPosition}px)`;
 }
 
-function scrollLoop() {
+let lastTime = 0;
+
+function scrollLoop(timestamp) {
   if (!isPlaying) return;
   
-  let speedFactor = currentSpeed * 0.05; 
+  if (!lastTime) lastTime = timestamp;
+  let deltaTime = timestamp - lastTime;
+  lastTime = timestamp;
+
+  // Обмежуємо deltaTime, щоб уникнути стрибків, якщо вкладка була неактивною
+  if (deltaTime > 100) deltaTime = 16.66;
+  
+  // Базова швидкість: 18 * 3 = 54 пікселі в секунду (еквівалент старої швидкості при 60 FPS)
+  let speedPerSecond = currentSpeed * 3; 
+  
   // Якщо ми пульт, адаптуємо швидкість фізичної прокрутки до висоти екрану Host'а
   if (syncMode === 'remote' && window.hostScrollHeight && prompterText) {
-    speedFactor = speedFactor * (prompterText.scrollHeight / window.hostScrollHeight);
+    speedPerSecond = speedPerSecond * (prompterText.scrollHeight / window.hostScrollHeight);
   }
   
-  scrollPosition -= speedFactor;
+  // Рух не залежить від частоти кадрів монітора (60Hz, 120Hz, 144Hz)
+  scrollPosition -= speedPerSecond * (deltaTime / 1000);
   updatePrompterTransform();
   
-  // Транслюємо свою позицію для пульта 4 рази на секунду
+  // Host транслює свою позицію для пульта кожні 500мс
   if (syncMode === 'host' && conn && conn.open) {
-    if (!window.syncFrameCount) window.syncFrameCount = 0;
-    window.syncFrameCount++;
-    if (window.syncFrameCount % 15 === 0) {
+    if (!window.lastSyncTime) window.lastSyncTime = 0;
+    if (timestamp - window.lastSyncTime > 500) {
+      window.lastSyncTime = timestamp;
       sendEvent({ type: 'SYNC_POS', percentage: getScrollPercentage() });
     }
   }
   
   // Зупиняємо, коли текст прокрутився повністю до темного екрану
-  if (scrollPosition < -(prompterText.scrollHeight + window.innerHeight)) {
-    scrollPosition = -(prompterText.scrollHeight + window.innerHeight);
+  const stopTarget = -(prompterText.scrollHeight + prompterContainer.clientHeight);
+  if (scrollPosition < stopTarget) {
+    scrollPosition = stopTarget;
     updatePrompterTransform();
     pausePrompter();
     return;
@@ -351,6 +364,7 @@ function startPrompter() {
 function resumePrompter() {
   if (!isPlaying) {
     isPlaying = true;
+    lastTime = 0; // Скидаємо таймер при відновленні
     if (voiceToggle && voiceToggle.checked && voiceStatusPrompter) voiceStatusPrompter.textContent = "🎤 Слухаю... (в роботі)";
     
     if (syncMode === 'remote') {
@@ -359,7 +373,7 @@ function resumePrompter() {
       sendEvent({ type: 'RESUME', percentage: getScrollPercentage() }); // Екран диктує позицію
     }
     
-    scrollLoop();
+    animationFrameId = requestAnimationFrame(scrollLoop);
   }
 }
 
