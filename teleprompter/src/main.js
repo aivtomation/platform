@@ -184,8 +184,12 @@ function handleRemoteCommand(data) {
   else if (data.type === 'SYNC_HEIGHT') {
     window.hostScrollHeight = data.height;
     window.hostClientWidth = data.width;
-    if (syncMode === 'remote' && window.hostClientWidth) {
-      if (prompterContainer) prompterContainer.style.width = `${window.hostClientWidth}px`;
+    window.hostClientHeight = data.clientHeight;
+    if (syncMode === 'remote') {
+      if (prompterContainer) {
+        if (window.hostClientWidth) prompterContainer.style.width = `${window.hostClientWidth}px`;
+        if (window.hostClientHeight) prompterContainer.style.height = `${window.hostClientHeight}px`;
+      }
     }
   }
   else if (data.type === 'EXIT') {
@@ -350,7 +354,8 @@ function startPrompter() {
         sendEvent({ 
           type: 'SYNC_HEIGHT', 
           height: prompterText ? prompterText.scrollHeight : 1,
-          width: prompterContainer ? prompterContainer.clientWidth : 375
+          width: prompterContainer ? prompterContainer.clientWidth : 375,
+          clientHeight: prompterContainer ? prompterContainer.clientHeight : 800
         });
       }, 100);
     }
@@ -405,7 +410,10 @@ function exitPrompter() {
     editorView.classList.add('active');
   }
   
-  if (prompterContainer) prompterContainer.style.width = '';
+  if (prompterContainer) {
+    prompterContainer.style.width = '';
+    prompterContainer.style.height = '100%';
+  }
   sendEvent({ type: 'EXIT' });
 }
 
