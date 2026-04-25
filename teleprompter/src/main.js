@@ -141,7 +141,6 @@ btnConnect?.addEventListener('click', () => {
   conn.on('open', () => {
     remoteStatus.textContent = "Підключено! Тепер ви керуєте екраном.";
     remoteStatus.className = "status connected";
-    sendEvent({ type: 'UPDATE_SETTINGS', speed: currentSpeed, size: sizeSlider.value });
   });
 
   conn.on('close', () => {
@@ -154,8 +153,6 @@ btnConnect?.addEventListener('click', () => {
 function handleRemoteCommand(data) {
   if (data.type === 'START') {
     if (textInput) textInput.value = data.text;
-    if (sizeSlider) sizeSlider.value = data.size;
-    if (speedSlider) speedSlider.value = data.speed;
     updateUISettings();
     startPrompter();
   } 
@@ -195,12 +192,6 @@ function handleRemoteCommand(data) {
   else if (data.type === 'EXIT') {
     exitPrompter();
   }
-  else if (data.type === 'SPEED_CHANGE') {
-    currentSpeed = data.speed;
-    if (speedSlider) speedSlider.value = currentSpeed;
-    if (prompterSpeedSlider) prompterSpeedSlider.value = currentSpeed;
-    if (speedValue) speedValue.textContent = currentSpeed;
-  }
 }
 
 // --- ОСНОВНА ЛОГІКА СУФЛЕРА ---
@@ -216,14 +207,12 @@ speedSlider?.addEventListener('input', (e) => {
   currentSpeed = parseInt(e.target.value);
   if (prompterSpeedSlider) prompterSpeedSlider.value = currentSpeed;
   updateUISettings();
-  sendEvent({ type: 'SPEED_CHANGE', speed: currentSpeed });
 });
 
 prompterSpeedSlider?.addEventListener('input', (e) => {
   currentSpeed = parseInt(e.target.value);
   if (speedSlider) speedSlider.value = currentSpeed;
   updateUISettings();
-  sendEvent({ type: 'SPEED_CHANGE', speed: currentSpeed });
 });
 
 // Щоб клік по повзунку швидкості не ставив на паузу суфлер
@@ -295,15 +284,6 @@ function scrollLoop(timestamp) {
   scrollPosition -= speedPerSecond * (deltaTime / 1000);
   updatePrompterTransform();
   
-  // Host транслює свою позицію для пульта кожні 500мс
-  if (syncMode === 'host' && conn && conn.open) {
-    if (!window.lastSyncTime) window.lastSyncTime = 0;
-    if (timestamp - window.lastSyncTime > 500) {
-      window.lastSyncTime = timestamp;
-      sendEvent({ type: 'SYNC_POS', percentage: getScrollPercentage() });
-    }
-  }
-  
   // Зупиняємо, коли текст прокрутився повністю до темного екрану
   const stopTarget = -(prompterText.scrollHeight + prompterContainer.clientHeight);
   if (scrollPosition < stopTarget) {
@@ -340,12 +320,12 @@ function startPrompter() {
         prompterView.classList.add('active');
         prompterView.classList.add('remote-preview-mode');
       }
-      sendEvent({ type: 'START', text: text, speed: currentSpeed, size: sizeSlider ? sizeSlider.value : 40 });
+      sendEvent({ type: 'START', text: text });
     } else {
       // Звичайний режим: на весь екран
       editorView?.classList.remove('active');
       prompterView?.classList.add('active');
-      sendEvent({ type: 'START', text: text, speed: currentSpeed, size: sizeSlider ? sizeSlider.value : 40, percentage: getScrollPercentage() });
+      sendEvent({ type: 'START', text: text, percentage: getScrollPercentage() });
     }
     
     // Якщо ми Екран (Host), надсилаємо свої розміри пульту
@@ -493,7 +473,6 @@ function initVoiceControl() {
       speedSlider.value = currentSpeed;
       prompterSpeedSlider.value = currentSpeed;
       updateUISettings();
-      sendEvent({ type: 'SPEED_CHANGE', speed: currentSpeed });
       commandExecuted = true;
     }
     else if (command.includes('повільніше') || command.includes('повільніш')) {
@@ -501,7 +480,6 @@ function initVoiceControl() {
       speedSlider.value = currentSpeed;
       prompterSpeedSlider.value = currentSpeed;
       updateUISettings();
-      sendEvent({ type: 'SPEED_CHANGE', speed: currentSpeed });
       commandExecuted = true;
     }
     else if (command.includes('вгору') || command.includes('назад') || command.includes('вище')) {
