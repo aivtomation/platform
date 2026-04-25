@@ -1,0 +1,353 @@
+:root {
+  --bg-color: #050505;
+  --panel-bg: rgba(20, 20, 25, 0.7);
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0b0;
+  --accent-color: #00f0ff;
+  --accent-hover: #00c3ff;
+  --danger-color: #ff3366;
+  --glass-blur: blur(16px);
+  --font-family: 'Inter', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  overflow: hidden; /* No scroll on body, handled by app */
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.view {
+  display: none;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.view.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Editor View --- */
+#editor-view {
+  padding: 2rem;
+  background: radial-gradient(circle at top right, #111122 0%, var(--bg-color) 70%);
+  overflow-y: auto;
+}
+
+header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+header h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #fff, var(--accent-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+.editor-main {
+  display: flex;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .editor-main {
+    flex-direction: column;
+  }
+}
+
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.control-panel {
+  flex: 0 0 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.control-panel h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.control-group.row-group {
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+}
+
+label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent-color);
+}
+
+select {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  color: white;
+  font-family: inherit;
+  font-size: 1rem;
+  outline: none;
+}
+
+select:focus {
+  border-color: var(--accent-color);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.2);
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: var(--accent-color);
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+.slider.round {
+  border-radius: 24px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+
+.toggle-label {
+  font-size: 0.95rem;
+}
+
+.btn-primary {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent-color), #0077ff);
+  color: #000;
+  font-weight: 800;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+textarea {
+  width: 100%;
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 1.2rem;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+textarea::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.voice-status {
+  font-size: 0.85rem;
+  color: var(--accent-color);
+  text-align: center;
+  margin-top: 0.5rem;
+  animation: pulse 2s infinite;
+}
+
+/* --- Prompter View --- */
+#prompter-view {
+  background-color: #000; /* Pitch black for mirror */
+}
+
+#prompter-container {
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Layouts */
+.layout-full {
+  width: 100%;
+  margin: 0;
+}
+
+.layout-left {
+  width: 50%;
+  margin-left: 0;
+}
+
+.layout-right {
+  width: 50%;
+  margin-left: 50%;
+}
+
+#prompter-text {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  padding: 2rem;
+  color: white;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  /* Font size set dynamically */
+  text-align: center; /* Generally better for teleprompters */
+  will-change: transform; /* optimization for scroll */
+}
+
+.mirrored {
+  transform: scaleX(-1);
+}
+
+.prompter-overlay {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1rem;
+  z-index: 100;
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+
+.prompter-overlay:hover {
+  opacity: 1;
+}
+
+.btn-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: none;
+  background: var(--danger-color);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(255, 51, 102, 0.4);
+}
+
+.btn-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+#prompter-view .voice-status {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: 1px solid var(--accent-color);
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}

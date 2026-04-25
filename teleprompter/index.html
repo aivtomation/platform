@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Teleprompter | aivtomation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/style.css">
+  </head>
+  <body>
+    <div id="app">
+      <!-- Editor/Settings View -->
+      <div id="editor-view" class="view active">
+        <header>
+          <div class="header-content">
+            <h1>AI Teleprompter</h1>
+            <p class="subtitle">Голосові команди: <strong>"старт"</strong>, <strong>"стоп"</strong>, <strong>"вгору"</strong>, <strong>"вниз"</strong></p>
+          </div>
+        </header>
+        
+        <main class="editor-main">
+          <div class="control-panel glass-panel">
+            <h2>Налаштування</h2>
+            <div class="control-group">
+              <label for="speed-slider">Швидкість прокрутки: <span id="speed-value">20</span></label>
+              <input type="range" id="speed-slider" min="1" max="100" value="20">
+            </div>
+            <div class="control-group">
+              <label for="size-slider">Розмір шрифту: <span id="size-value">60</span>px</label>
+              <input type="range" id="size-slider" min="20" max="150" value="60">
+            </div>
+            <div class="control-group row-group">
+              <label class="toggle-switch">
+                <input type="checkbox" id="mirror-toggle">
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label">Віддзеркалити (для суфлера)</span>
+            </div>
+            <div class="control-group">
+              <label for="layout-select">Розташування тексту</label>
+              <select id="layout-select">
+                <option value="layout-full">На весь екран</option>
+                <option value="layout-left">Зліва (для смартфона)</option>
+                <option value="layout-right">Справа (для смартфона)</option>
+              </select>
+            </div>
+            <button id="start-btn" class="btn-primary">Запустити</button>
+            <div id="voice-indicator-editor" class="voice-status">🎤 Голосове управління активно</div>
+          </div>
+          
+          <div class="editor-container glass-panel">
+            <textarea id="text-input" placeholder="Вставте ваш текст сюди..."></textarea>
+          </div>
+        </main>
+      </div>
+
+      <!-- Prompter View -->
+      <div id="prompter-view" class="view">
+        <div id="prompter-container" class="layout-full">
+          <div id="prompter-text"></div>
+        </div>
+        <div class="prompter-overlay">
+          <button id="stop-btn" class="btn-icon" title="Зупинити / Редагувати">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+          </button>
+          <div id="voice-status" class="voice-status listening">🎤 Слухаю...</div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
