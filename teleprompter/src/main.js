@@ -77,11 +77,15 @@ function setSyncMode(mode) {
     if (speedSlider) speedSlider.value = 23;
     if (sizeSlider) sizeSlider.value = 46;
     if (layoutSelect) layoutSelect.value = 'layout-left';
+    if (mirrorX) mirrorX.checked = false;
+    if (mirrorY) mirrorY.checked = false;
   } else {
     // Налаштування по замовчуванню для Телефону
     if (speedSlider) speedSlider.value = 18;
     if (sizeSlider) sizeSlider.value = 40;
-    if (layoutSelect) layoutSelect.value = 'layout-full';
+    if (layoutSelect) layoutSelect.value = 'layout-left';
+    if (mirrorX) mirrorX.checked = false;
+    if (mirrorY) mirrorY.checked = true;
   }
   
   updateUISettings();
