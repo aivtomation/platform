@@ -70,6 +70,30 @@ function setSyncMode(mode) {
     remotePanel.classList.remove('hidden');
     initRemote();
   }
+  
+  // Застосування дефолтних налаштувань залежно від режиму
+  if (mode === 'remote') {
+    // Золота формула для ПК
+    if (speedSlider) speedSlider.value = 23;
+    if (sizeSlider) sizeSlider.value = 46;
+    if (layoutSelect) layoutSelect.value = 'layout-left';
+  } else {
+    // Налаштування по замовчуванню для Телефону
+    if (speedSlider) speedSlider.value = 18;
+    if (sizeSlider) sizeSlider.value = 40;
+    if (layoutSelect) layoutSelect.value = 'layout-full';
+  }
+  
+  updateUISettings();
+  if (prompterSpeedSlider && speedSlider) prompterSpeedSlider.value = speedSlider.value;
+  
+  // Примусове оновлення layout
+  if (prompterContainer && layoutSelect) {
+    prompterContainer.className = '';
+    if (mirrorX && mirrorX.checked) prompterContainer.classList.add('mirrored-x');
+    if (mirrorY && mirrorY.checked) prompterContainer.classList.add('mirrored-y');
+    prompterContainer.classList.add(layoutSelect.value);
+  }
 }
 
 btnModeLocal?.addEventListener('click', () => setSyncMode('local'));
