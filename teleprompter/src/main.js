@@ -388,8 +388,22 @@ function initVoiceControl() {
 
 window.addEventListener('DOMContentLoaded', () => {
   initVoiceControl();
+  
+  // Розумні налаштування за замовчуванням
+  const isMobile = window.innerWidth < 768 || navigator.userAgent.match(/Mobi/i);
+  if (isMobile) {
+    mirrorX.checked = true;
+    mirrorY.checked = true;
+    layoutSelect.value = 'layout-left';
+  } else {
+    mirrorX.checked = false;
+    mirrorY.checked = false;
+    layoutSelect.value = 'layout-full';
+  }
+  
   if (mirrorX.checked) prompterContainer.classList.add('mirrored-x');
   if (mirrorY.checked) prompterContainer.classList.add('mirrored-y');
   prompterContainer.classList.add(layoutSelect.value);
+  
   textInput.value = "Ласкаво просимо до AI Телесуфлера.\n\nТепер ви можете використовувати комп'ютер як пульт для телефону.\n\nКоманди:\n- суфлер старт\n- суфлер стоп\n- суфлер швидше\n- суфлер повільніше";
 });
