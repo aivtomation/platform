@@ -183,6 +183,10 @@ function handleRemoteCommand(data) {
   }
   else if (data.type === 'SYNC_HEIGHT') {
     window.hostScrollHeight = data.height;
+    window.hostClientWidth = data.width;
+    if (syncMode === 'remote' && window.hostClientWidth) {
+      if (prompterContainer) prompterContainer.style.width = `${window.hostClientWidth}px`;
+    }
   }
   else if (data.type === 'EXIT') {
     exitPrompter();
@@ -303,19 +307,34 @@ function startPrompter() {
       prompterText.textContent = text;
       if (sizeSlider) prompterText.style.fontSize = `${sizeSlider.value}px`;
     }
-    
-    editorView?.classList.remove('active');
-    prompterView?.classList.add('active');
-    
     scrollPosition = window.innerHeight * 0.1;
     updatePrompterTransform();
     
-    sendEvent({ type: 'START', text: text, speed: currentSpeed, size: sizeSlider ? sizeSlider.value : 40 });
+    if (syncMode === 'remote') {
+      // Режим Пульта: не ховаємо редактор, а вставляємо суфлер у праву панель
+      const textPanel = document.getElementById('text-panel');
+      if (textInput) textInput.style.display = 'none';
+      if (textPanel && prompterView) {
+        textPanel.appendChild(prompterView);
+        prompterView.classList.add('active');
+        prompterView.classList.add('remote-preview-mode');
+      }
+      sendEvent({ type: 'START', text: text, speed: currentSpeed, size: sizeSlider ? sizeSlider.value : 40 });
+    } else {
+      // Звичайний режим: на весь екран
+      editorView?.classList.remove('active');
+      prompterView?.classList.add('active');
+      sendEvent({ type: 'START', text: text, speed: currentSpeed, size: sizeSlider ? sizeSlider.value : 40, percentage: getScrollPercentage() });
+    }
     
-    // Якщо ми Екран (Host), надсилаємо свою висоту тексту пульту
+    // Якщо ми Екран (Host), надсилаємо свої розміри пульту
     if (syncMode === 'host') {
       setTimeout(() => {
-        sendEvent({ type: 'SYNC_HEIGHT', height: prompterText ? prompterText.scrollHeight : 1 });
+        sendEvent({ 
+          type: 'SYNC_HEIGHT', 
+          height: prompterText ? prompterText.scrollHeight : 1,
+          width: prompterContainer ? prompterContainer.clientWidth : 375
+        });
       }, 100);
     }
     
@@ -354,8 +373,21 @@ function pausePrompter() {
 
 function exitPrompter() {
   pausePrompter();
-  prompterView.classList.remove('active');
-  editorView.classList.add('active');
+  
+  if (syncMode === 'remote') {
+    const app = document.getElementById('app');
+    if (textInput) textInput.style.display = 'block';
+    if (app && prompterView) {
+      prompterView.classList.remove('active');
+      prompterView.classList.remove('remote-preview-mode');
+      app.appendChild(prompterView); // повертаємо в корінь
+    }
+  } else {
+    prompterView.classList.remove('active');
+    editorView.classList.add('active');
+  }
+  
+  if (prompterContainer) prompterContainer.style.width = '';
   sendEvent({ type: 'EXIT' });
 }
 
