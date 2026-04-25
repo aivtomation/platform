@@ -7,6 +7,7 @@
   --accent-color: #00f0ff;
   --accent-hover: #00c3ff;
   --danger-color: #ff3366;
+  --success-color: #00ff88;
   --glass-blur: blur(16px);
   --font-family: 'Inter', sans-serif;
 }
@@ -23,7 +24,7 @@ body, html {
   background-color: var(--bg-color);
   color: var(--text-primary);
   font-family: var(--font-family);
-  overflow: hidden; /* No scroll on body, handled by app */
+  overflow: hidden;
 }
 
 #app {
@@ -132,7 +133,7 @@ input[type="range"] {
   accent-color: var(--accent-color);
 }
 
-select {
+select, input[type="text"] {
   width: 100%;
   padding: 0.75rem;
   background: rgba(0, 0, 0, 0.5);
@@ -144,7 +145,7 @@ select {
   outline: none;
 }
 
-select:focus {
+select:focus, input[type="text"]:focus {
   border-color: var(--accent-color);
 }
 
@@ -227,6 +228,65 @@ input:checked + .slider:before {
   transform: translateY(0);
 }
 
+/* Remote Control Styles */
+.remote-group {
+  margin-top: 0.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--panel-border);
+}
+
+.remote-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.btn-secondary {
+  background: rgba(255,255,255,0.1);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  flex: 1;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.btn-secondary.active {
+  background: var(--accent-color);
+  color: black;
+  font-weight: bold;
+  border-color: var(--accent-color);
+}
+
+.remote-panel {
+  background: rgba(0,0,0,0.4);
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.remote-panel h3 {
+  font-size: 2.5rem;
+  letter-spacing: 8px;
+  color: var(--accent-color);
+  margin: 0.5rem 0;
+  font-family: monospace;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.status {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.status.waiting { color: #ffaa00; animation: pulse 2s infinite; }
+.status.connected { color: var(--success-color); }
+
 .editor-container {
   flex: 1;
   display: flex;
@@ -260,7 +320,7 @@ textarea::placeholder {
 
 /* --- Prompter View --- */
 #prompter-view {
-  background-color: #000; /* Pitch black for mirror */
+  background-color: #000;
 }
 
 #prompter-container {
@@ -270,20 +330,9 @@ textarea::placeholder {
 }
 
 /* Layouts */
-.layout-full {
-  width: 100%;
-  margin: 0;
-}
-
-.layout-left {
-  width: 50%;
-  margin-left: 0;
-}
-
-.layout-right {
-  width: 50%;
-  margin-left: 50%;
-}
+.layout-full { width: 100%; margin: 0; }
+.layout-left { width: 66.66%; margin-left: 0; }
+.layout-right { width: 66.66%; margin-left: 33.33%; }
 
 #prompter-text {
   position: absolute;
@@ -294,9 +343,8 @@ textarea::placeholder {
   color: white;
   white-space: pre-wrap;
   line-height: 1.4;
-  /* Font size set dynamically */
-  text-align: center; /* Generally better for teleprompters */
-  will-change: transform; /* optimization for scroll */
+  text-align: center;
+  will-change: transform;
 }
 
 .mirrored {

@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css">
+    <!-- PeerJS для WebRTC (віддалене керування) -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   </head>
   <body>
     <div id="app">
@@ -16,7 +18,7 @@
         <header>
           <div class="header-content">
             <h1>AI Teleprompter</h1>
-            <p class="subtitle">Голосові команди: <strong>"суфлер старт"</strong>, <strong>"суфлер стоп"</strong>, <strong>"суфлер вгору"</strong>, <strong>"суфлер вниз"</strong></p>
+            <p class="subtitle">Голосові команди: <strong>"суфлер старт"</strong>, <strong>"суфлер стоп"</strong>, <strong>"суфлер швидше"</strong>, <strong>"суфлер вгору"</strong></p>
           </div>
         </header>
         
@@ -46,6 +48,30 @@
                 <option value="layout-right">Справа (для смартфона)</option>
               </select>
             </div>
+            
+            <div class="control-group remote-group">
+              <label>Віддалене керування (Синхронізація)</label>
+              <div class="remote-buttons">
+                <button id="btn-mode-local" class="btn-secondary active">Автономно</button>
+                <button id="btn-mode-host" class="btn-secondary">Екран (Телефон)</button>
+                <button id="btn-mode-remote" class="btn-secondary">Пульт (ПК)</button>
+              </div>
+              
+              <!-- Панель Екрану -->
+              <div id="host-panel" class="remote-panel hidden">
+                <p>Код для підключення пульта:</p>
+                <h3 id="host-code">----</h3>
+                <p id="host-status" class="status waiting">Очікування пульта...</p>
+              </div>
+
+              <!-- Панель Пульта -->
+              <div id="remote-panel" class="remote-panel hidden">
+                <input type="text" id="remote-code-input" placeholder="Введіть код з екрану (4 цифри)" maxlength="4" style="width: 100%; text-align: center; font-size: 1.2rem; letter-spacing: 5px; margin-bottom: 0.5rem;">
+                <button id="btn-connect" class="btn-primary" style="padding: 0.5rem; font-size: 1rem; width: 100%; margin-top: 0;">Підключитись</button>
+                <p id="remote-status" class="status" style="margin-top: 0.5rem;">Не підключено</p>
+              </div>
+            </div>
+
             <button id="start-btn" class="btn-primary">Запустити</button>
             <div id="voice-indicator-editor" class="voice-status">🎤 Голосове управління активно</div>
           </div>
