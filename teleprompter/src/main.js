@@ -247,15 +247,19 @@ layoutSelect?.addEventListener('change', (e) => {
 });
 
 function getScrollPercentage() {
-  if (!prompterText || prompterText.scrollHeight === 0) return 0;
-  // Вираховуємо відсоток прокрутки відносно ЦЕНТРУ екрану (найважливіша зона для читання)
-  return (window.innerHeight * 0.5 - scrollPosition) / prompterText.scrollHeight;
+  if (!prompterText || !prompterContainer || prompterText.scrollHeight === 0) return 0;
+  // Математично точний відсоток тексту, що знаходиться рівно по ЦЕНТРУ контейнера
+  const H_c = prompterContainer.clientHeight;
+  const S_h = prompterText.scrollHeight;
+  return (-scrollPosition - H_c / 2) / S_h;
 }
 
 function setScrollPercentage(percentage) {
-  if (!prompterText) return;
-  // Встановлюємо позицію так, щоб той самий відсоток тексту опинився рівно по ЦЕНТРУ екрану
-  scrollPosition = window.innerHeight * 0.5 - (percentage * prompterText.scrollHeight);
+  if (!prompterText || !prompterContainer) return;
+  // Встановлюємо scrollPosition так, щоб заданий відсоток тексту опинився по ЦЕНТРУ контейнера
+  const H_c = prompterContainer.clientHeight;
+  const S_h = prompterText.scrollHeight;
+  scrollPosition = - (percentage * S_h) - H_c / 2;
   updatePrompterTransform();
 }
 
@@ -307,7 +311,7 @@ function startPrompter() {
       prompterText.textContent = text;
       if (sizeSlider) prompterText.style.fontSize = `${sizeSlider.value}px`;
     }
-    scrollPosition = window.innerHeight * 0.1;
+    scrollPosition = 0; // Починаємо завжди з нижнього краю свого контейнера
     updatePrompterTransform();
     
     if (syncMode === 'remote') {
