@@ -72,9 +72,9 @@ function setSyncMode(mode) {
   }
 }
 
-btnModeLocal.addEventListener('click', () => setSyncMode('local'));
-btnModeHost.addEventListener('click', () => setSyncMode('host'));
-btnModeRemote.addEventListener('click', () => setSyncMode('remote'));
+btnModeLocal?.addEventListener('click', () => setSyncMode('local'));
+btnModeHost?.addEventListener('click', () => setSyncMode('host'));
+btnModeRemote?.addEventListener('click', () => setSyncMode('remote'));
 
 // Функція для надсилання подій (працює тільки якщо ми - Пульт)
 function sendEvent(data) {
@@ -125,7 +125,7 @@ function initRemote() {
   remoteStatus.className = "status";
 }
 
-btnConnect.addEventListener('click', () => {
+btnConnect?.addEventListener('click', () => {
   if (!peer) return;
   const code = remoteCodeInput.value.trim();
   if (code.length !== 4) {
@@ -178,56 +178,56 @@ function handleRemoteCommand(data) {
   }
   else if (data.type === 'SPEED_CHANGE') {
     currentSpeed = data.speed;
-    speedSlider.value = currentSpeed;
-    prompterSpeedSlider.value = currentSpeed;
-    speedValue.textContent = currentSpeed;
+    if (speedSlider) speedSlider.value = currentSpeed;
+    if (prompterSpeedSlider) prompterSpeedSlider.value = currentSpeed;
+    if (speedValue) speedValue.textContent = currentSpeed;
   }
 }
 
 // --- ОСНОВНА ЛОГІКА СУФЛЕРА ---
 
 function updateUISettings() {
-  currentSpeed = parseInt(speedSlider.value);
-  speedValue.textContent = currentSpeed;
-  sizeValue.textContent = sizeSlider.value;
-  prompterText.style.fontSize = `${sizeSlider.value}px`;
+  if (speedSlider) currentSpeed = parseInt(speedSlider.value);
+  if (speedValue) speedValue.textContent = currentSpeed;
+  if (sizeValue && sizeSlider) sizeValue.textContent = sizeSlider.value;
+  if (prompterText && sizeSlider) prompterText.style.fontSize = `${sizeSlider.value}px`;
 }
 
-speedSlider.addEventListener('input', (e) => {
+speedSlider?.addEventListener('input', (e) => {
   currentSpeed = parseInt(e.target.value);
-  prompterSpeedSlider.value = currentSpeed;
+  if (prompterSpeedSlider) prompterSpeedSlider.value = currentSpeed;
   updateUISettings();
   sendEvent({ type: 'SPEED_CHANGE', speed: currentSpeed });
 });
 
-prompterSpeedSlider.addEventListener('input', (e) => {
+prompterSpeedSlider?.addEventListener('input', (e) => {
   currentSpeed = parseInt(e.target.value);
-  speedSlider.value = currentSpeed;
+  if (speedSlider) speedSlider.value = currentSpeed;
   updateUISettings();
   sendEvent({ type: 'SPEED_CHANGE', speed: currentSpeed });
 });
 
 // Щоб клік по повзунку швидкості не ставив на паузу суфлер
-prompterSpeedSlider.addEventListener('click', (e) => e.stopPropagation());
-prompterSpeedSlider.addEventListener('mousedown', (e) => e.stopPropagation());
-prompterSpeedSlider.addEventListener('touchstart', (e) => e.stopPropagation());
+prompterSpeedSlider?.addEventListener('click', (e) => e.stopPropagation());
+prompterSpeedSlider?.addEventListener('mousedown', (e) => e.stopPropagation());
+prompterSpeedSlider?.addEventListener('touchstart', (e) => e.stopPropagation());
 
-sizeSlider.addEventListener('input', updateUISettings);
+sizeSlider?.addEventListener('input', updateUISettings);
 
-mirrorX.addEventListener('change', (e) => {
+mirrorX?.addEventListener('change', (e) => {
   if (e.target.checked) prompterContainer.classList.add('mirrored-x');
   else prompterContainer.classList.remove('mirrored-x');
 });
 
-mirrorY.addEventListener('change', (e) => {
+mirrorY?.addEventListener('change', (e) => {
   if (e.target.checked) prompterContainer.classList.add('mirrored-y');
   else prompterContainer.classList.remove('mirrored-y');
 });
 
-layoutSelect.addEventListener('change', (e) => {
+layoutSelect?.addEventListener('change', (e) => {
   prompterContainer.className = '';
-  if (mirrorX.checked) prompterContainer.classList.add('mirrored-x');
-  if (mirrorY.checked) prompterContainer.classList.add('mirrored-y');
+  if (mirrorX && mirrorX.checked) prompterContainer.classList.add('mirrored-x');
+  if (mirrorY && mirrorY.checked) prompterContainer.classList.add('mirrored-y');
   prompterContainer.classList.add(e.target.value);
 });
 
@@ -253,22 +253,24 @@ function scrollLoop() {
 
 function startPrompter() {
   try {
-    const text = textInput.value.trim();
+    const text = textInput ? textInput.value.trim() : "";
     if (!text) {
       alert("Будь ласка, введіть текст для прокрутки.");
       return;
     }
     
-    prompterText.textContent = text;
-    prompterText.style.fontSize = `${sizeSlider.value}px`;
+    if (prompterText) {
+      prompterText.textContent = text;
+      if (sizeSlider) prompterText.style.fontSize = `${sizeSlider.value}px`;
+    }
     
-    editorView.classList.remove('active');
-    prompterView.classList.add('active');
+    editorView?.classList.remove('active');
+    prompterView?.classList.add('active');
     
     scrollPosition = window.innerHeight * 0.1;
     updatePrompterTransform();
     
-    sendEvent({ type: 'START', text: text, speed: currentSpeed, size: sizeSlider.value });
+    sendEvent({ type: 'START', text: text, speed: currentSpeed, size: sizeSlider ? sizeSlider.value : 40 });
     
     resumePrompter();
   } catch (err) {
@@ -299,16 +301,16 @@ function exitPrompter() {
   sendEvent({ type: 'EXIT' });
 }
 
-startBtn.addEventListener('click', startPrompter);
-stopBtn.addEventListener('click', exitPrompter);
+startBtn?.addEventListener('click', startPrompter);
+stopBtn?.addEventListener('click', exitPrompter);
 
 // ЛОКАЛЬНЕ КЕРУВАННЯ МИШКОЮ В РЕЖИМІ СУФЛЕРА
-prompterContainer.addEventListener('click', () => {
+prompterContainer?.addEventListener('click', () => {
   if (isPlaying) pausePrompter();
   else resumePrompter();
 });
 
-prompterContainer.addEventListener('wheel', (e) => {
+prompterContainer?.addEventListener('wheel', (e) => {
   // Коліщатко миші для прокрутки вгору/вниз
   scrollPosition -= e.deltaY;
   updatePrompterTransform();
@@ -418,7 +420,7 @@ function initVoiceControl() {
   }
 }
 
-voiceToggle.addEventListener('change', (e) => {
+voiceToggle?.addEventListener('change', (e) => {
   if (e.target.checked) {
     initVoiceControl();
   } else {
@@ -430,22 +432,31 @@ voiceToggle.addEventListener('change', (e) => {
   }
 });
 
+window.onerror = function(message, source, lineno, colno, error) {
+  alert(`Глобальна помилка: ${message}\nРядок: ${lineno}\nКолонка: ${colno}`);
+  return true;
+};
+
 window.addEventListener('DOMContentLoaded', () => {
-  // Розумні налаштування за замовчуванням
-  const isMobile = window.innerWidth < 768 || navigator.userAgent.match(/Mobi/i);
-  if (isMobile) {
-    mirrorX.checked = true;
-    mirrorY.checked = true;
-    layoutSelect.value = 'layout-left';
-  } else {
-    mirrorX.checked = false;
-    mirrorY.checked = false;
-    layoutSelect.value = 'layout-full';
+  try {
+    // Розумні налаштування за замовчуванням
+    const isMobile = window.innerWidth < 768 || navigator.userAgent.match(/Mobi/i);
+    if (isMobile) {
+      mirrorX.checked = true;
+      mirrorY.checked = true;
+      layoutSelect.value = 'layout-left';
+    } else {
+      mirrorX.checked = false;
+      mirrorY.checked = false;
+      layoutSelect.value = 'layout-full';
+    }
+    
+    if (mirrorX && mirrorX.checked) prompterContainer?.classList.add('mirrored-x');
+    if (mirrorY && mirrorY.checked) prompterContainer?.classList.add('mirrored-y');
+    if (layoutSelect) prompterContainer?.classList.add(layoutSelect.value);
+    
+    if (textInput) textInput.value = "Ласкаво просимо до AI Телесуфлера.\n\nТепер ви можете використовувати комп'ютер як пульт для телефону.\n\nКоманди:\n- суфлер старт\n- суфлер стоп\n- суфлер швидше\n- суфлер повільніше";
+  } catch(e) {
+    alert("Помилка ініціалізації: " + e.message);
   }
-  
-  if (mirrorX.checked) prompterContainer.classList.add('mirrored-x');
-  if (mirrorY.checked) prompterContainer.classList.add('mirrored-y');
-  prompterContainer.classList.add(layoutSelect.value);
-  
-  textInput.value = "Ласкаво просимо до AI Телесуфлера.\n\nТепер ви можете використовувати комп'ютер як пульт для телефону.\n\nКоманди:\n- суфлер старт\n- суфлер стоп\n- суфлер швидше\n- суфлер повільніше";
 });
