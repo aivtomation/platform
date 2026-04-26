@@ -32,12 +32,129 @@ const remoteCodeInput = document.getElementById('remote-code-input');
 const btnConnect = document.getElementById('btn-connect');
 const remoteStatus = document.getElementById('remote-status');
 
+// Нові елементи
+const langSelect = document.getElementById('lang-select');
+const globalSpeedSlider = document.getElementById('global-speed-slider');
+const globalSpeedValue = document.getElementById('global-speed-value');
+const voiceControlContainer = document.getElementById('voice-control-container');
+
 // Стан додатку
 let isPlaying = false;
 let scrollPosition = 0;
 let animationFrameId = null;
 let currentSpeed = 18;
+let globalSpeedMultiplier = 1.0;
 let lastCommandTime = 0;
+
+// Словник локалізації
+const i18nDict = {
+  uk: {
+    title: "AI Teleprompter",
+    subtitle: "Універсальний телесуфлер з віддаленим керуванням",
+    remote_sync: "Віддалене керування (Синхронізація)",
+    mode_local: "Автономно",
+    mode_host: "Екран (Телефон)",
+    mode_remote: "Пульт (ПК)",
+    code_label: "Код для підключення пульта:",
+    status_waiting_remote: "Очікування пульта...",
+    remote_code_placeholder: "Введіть код з екрану (4 цифри)",
+    btn_connect: "Підключитись",
+    status_not_connected: "Не підключено",
+    settings: "Налаштування",
+    global_speed: "Загальна швидкість (%):",
+    scroll_speed: "Швидкість прокрутки:",
+    font_size: "Розмір шрифту:",
+    mirror_x: "Дзеркало Горизонталь ↔",
+    mirror_y: "Дзеркало Вертикаль ↕",
+    layout_label: "Розташування тексту",
+    layout_full: "На весь екран",
+    layout_left: "Зліва (для смартфона)",
+    layout_right: "Справа (для смартфона)",
+    voice_control: "🎤 Голосове керування",
+    btn_start: "Запустити",
+    voice_active: "🎤 Голосове управління активно",
+    text_placeholder: "Вставте ваш текст сюди...\n\nГолосові команди (Англійською):\n- start start / go go\n- stop stop / pause pause\n- faster faster\n- slower slower\n- up up / down down\n- exit exit",
+    instructions: "Голосові команди: start start, stop stop, faster faster, slower slower, up up, down down, exit exit"
+  },
+  en: {
+    title: "AI Teleprompter",
+    subtitle: "Universal teleprompter with remote control",
+    remote_sync: "Remote Control (Sync)",
+    mode_local: "Local",
+    mode_host: "Screen (Phone)",
+    mode_remote: "Remote (PC)",
+    code_label: "Code to connect remote:",
+    status_waiting_remote: "Waiting for remote...",
+    remote_code_placeholder: "Enter screen code (4 digits)",
+    btn_connect: "Connect",
+    status_not_connected: "Not connected",
+    settings: "Settings",
+    global_speed: "Global Speed (%):",
+    scroll_speed: "Scroll Speed:",
+    font_size: "Font Size:",
+    mirror_x: "Mirror Horizontal ↔",
+    mirror_y: "Mirror Vertical ↕",
+    layout_label: "Text Layout",
+    layout_full: "Full screen",
+    layout_left: "Left (for smartphone)",
+    layout_right: "Right (for smartphone)",
+    voice_control: "🎤 Voice Control",
+    btn_start: "Start",
+    voice_active: "🎤 Voice control is active",
+    text_placeholder: "Paste your text here...\n\nVoice Commands:\n- start start / go go\n- stop stop / pause pause\n- faster faster\n- slower slower\n- up up / down down\n- exit exit",
+    instructions: "Voice Commands: start start, stop stop, faster faster, slower slower, up up, down down, exit exit"
+  },
+  es: {
+    title: "AI Teleprompter",
+    subtitle: "Teleprompter universal con control remoto",
+    remote_sync: "Control remoto (Sincronización)",
+    mode_local: "Local",
+    mode_host: "Pantalla (Teléfono)",
+    mode_remote: "Remoto (PC)",
+    code_label: "Código para conectar el control remoto:",
+    status_waiting_remote: "Esperando al control remoto...",
+    remote_code_placeholder: "Introducir código de pantalla (4 dígitos)",
+    btn_connect: "Conectar",
+    status_not_connected: "No conectado",
+    settings: "Ajustes",
+    global_speed: "Velocidad global (%):",
+    scroll_speed: "Velocidad de desplazamiento:",
+    font_size: "Tamaño de fuente:",
+    mirror_x: "Espejo Horizontal ↔",
+    mirror_y: "Espejo Vertical ↕",
+    layout_label: "Diseño de texto",
+    layout_full: "Pantalla completa",
+    layout_left: "Izquierda (para smartphone)",
+    layout_right: "Derecha (para smartphone)",
+    voice_control: "🎤 Control de voz",
+    btn_start: "Comenzar",
+    voice_active: "🎤 Control de voz activo",
+    text_placeholder: "Pegue su texto aquí...\n\nComandos de voz (En Inglés):\n- start start / go go\n- stop stop / pause pause\n- faster faster\n- slower slower\n- up up / down down\n- exit exit",
+    instructions: "Comandos de voz: start start, stop stop, faster faster, slower slower, up up, down down, exit exit"
+  }
+};
+
+function setLanguage(lang) {
+  const dict = i18nDict[lang] || i18nDict['uk'];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (dict[key]) {
+      el.textContent = dict[key];
+    }
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (dict[key]) {
+      el.placeholder = dict[key];
+      // Оновлюємо текст за замовчуванням, якщо поле пусте або містило старий дефолт
+      if (el.id === 'text-input' && (el.value === '' || el.value.includes('Ласкаво просимо') || el.value.includes('Welcome') || el.value.includes('Bienvenido') || el.value.includes('Paste your text'))) {
+        el.value = dict[key];
+      }
+    }
+  });
+}
+
+langSelect?.addEventListener('change', (e) => setLanguage(e.target.value));
 
 // Стан мережі (PeerJS)
 let peer = null;
@@ -59,15 +176,22 @@ function setSyncMode(mode) {
 
   if (mode === 'local') {
     btnModeLocal.classList.add('active');
+    if (voiceControlContainer) voiceControlContainer.style.display = 'flex';
   } 
   else if (mode === 'host') {
     btnModeHost.classList.add('active');
     hostPanel.classList.remove('hidden');
+    if (voiceToggle) {
+      voiceToggle.checked = false; // Вимикаємо мікрофон
+      if (globalRecognition) globalRecognition.stop();
+    }
+    if (voiceControlContainer) voiceControlContainer.style.display = 'none'; // Ховаємо блок повністю
     initHost();
   } 
   else if (mode === 'remote') {
     btnModeRemote.classList.add('active');
     remotePanel.classList.remove('hidden');
+    if (voiceControlContainer) voiceControlContainer.style.display = 'flex';
     initRemote();
   }
   
@@ -181,6 +305,11 @@ btnConnect?.addEventListener('click', () => {
 function handleRemoteCommand(data) {
   if (data.type === 'START') {
     if (textInput) textInput.value = data.text;
+    if (data.globalSpeedMultiplier !== undefined) {
+      globalSpeedMultiplier = data.globalSpeedMultiplier;
+      if (globalSpeedSlider) globalSpeedSlider.value = data.globalSpeedSliderValue;
+      if (globalSpeedValue) globalSpeedValue.textContent = data.globalSpeedSliderValue;
+    }
     updateUISettings();
     startPrompter();
   } 
@@ -220,6 +349,13 @@ function handleRemoteCommand(data) {
   else if (data.type === 'EXIT') {
     exitPrompter();
   }
+  else if (data.type === 'GLOBAL_SPEED') {
+    globalSpeedMultiplier = data.value;
+    if (globalSpeedSlider) {
+      globalSpeedSlider.value = data.sliderValue;
+      if (globalSpeedValue) globalSpeedValue.textContent = data.sliderValue;
+    }
+  }
 }
 
 // --- ОСНОВНА ЛОГІКА СУФЛЕРА ---
@@ -247,6 +383,12 @@ prompterSpeedSlider?.addEventListener('input', (e) => {
 prompterSpeedSlider?.addEventListener('click', (e) => e.stopPropagation());
 prompterSpeedSlider?.addEventListener('mousedown', (e) => e.stopPropagation());
 prompterSpeedSlider?.addEventListener('touchstart', (e) => e.stopPropagation());
+
+globalSpeedSlider?.addEventListener('input', (e) => {
+  globalSpeedValue.textContent = e.target.value;
+  globalSpeedMultiplier = parseInt(e.target.value) / 50;
+  sendEvent({ type: 'GLOBAL_SPEED', value: globalSpeedMultiplier, sliderValue: e.target.value });
+});
 
 sizeSlider?.addEventListener('input', updateUISettings);
 
@@ -300,8 +442,8 @@ function scrollLoop(timestamp) {
   // Обмежуємо deltaTime, щоб уникнути стрибків, якщо вкладка була неактивною
   if (deltaTime > 100) deltaTime = 16.66;
   
-  // Базова швидкість: 18 * 3 = 54 пікселі в секунду (еквівалент старої швидкості при 60 FPS)
-  let speedPerSecond = currentSpeed * 3; 
+  // Базова швидкість: 18 * 3 = 54 пікселі в секунду, помножена на глобальний множник
+  let speedPerSecond = currentSpeed * 3 * globalSpeedMultiplier; 
   
   // Якщо ми пульт, адаптуємо швидкість фізичної прокрутки до висоти екрану Host'а
   if (syncMode === 'remote' && window.hostScrollHeight && prompterText) {
@@ -348,12 +490,23 @@ function startPrompter() {
         prompterView.classList.add('active');
         prompterView.classList.add('remote-preview-mode');
       }
-      sendEvent({ type: 'START', text: text });
+      sendEvent({ 
+        type: 'START', 
+        text: text,
+        globalSpeedMultiplier: globalSpeedMultiplier,
+        globalSpeedSliderValue: globalSpeedSlider ? globalSpeedSlider.value : 50
+      });
     } else {
       // Звичайний режим: на весь екран
       editorView?.classList.remove('active');
       prompterView?.classList.add('active');
-      sendEvent({ type: 'START', text: text, percentage: getScrollPercentage() });
+      sendEvent({ 
+        type: 'START', 
+        text: text, 
+        percentage: getScrollPercentage(),
+        globalSpeedMultiplier: globalSpeedMultiplier,
+        globalSpeedSliderValue: globalSpeedSlider ? globalSpeedSlider.value : 50
+      });
     }
     
     // Якщо ми Екран (Host), надсилаємо свої розміри пульту
@@ -469,7 +622,7 @@ function initVoiceControl() {
   }
 
   globalRecognition = new SpeechRecognition();
-  globalRecognition.lang = 'uk-UA'; 
+  globalRecognition.lang = 'en-US'; // Англійська мова для команд
   globalRecognition.continuous = true;
   globalRecognition.interimResults = true;
 
@@ -482,47 +635,47 @@ function initVoiceControl() {
     const lastResultIndex = event.results.length - 1;
     const command = event.results[lastResultIndex][0].transcript.trim().toLowerCase();
 
-    const hasWakeWord = command.includes('суфлер');
-    if (!hasWakeWord || command.length > 30) return;
+    // Більше не шукаємо "суфлер", але чекаємо конкретних подвійних команд
+    if (command.length > 30) return;
 
     let commandExecuted = false;
 
-    if (command.includes('старт') || command.includes('продовжити') || command.includes('поїхали')) {
+    if (command.includes('start start') || command.includes('go go')) {
       if (editorView.classList.contains('active')) startPrompter();
       else resumePrompter();
       commandExecuted = true;
     } 
-    else if (command.includes('стоп') || command.includes('пауза')) {
+    else if (command.includes('stop stop') || command.includes('pause pause')) {
       pausePrompter();
       commandExecuted = true;
     }
-    else if (command.includes('швидше') || command.includes('скоріше')) {
+    else if (command.includes('faster faster')) {
       currentSpeed = Math.min(100, currentSpeed + 10);
       speedSlider.value = currentSpeed;
       prompterSpeedSlider.value = currentSpeed;
       updateUISettings();
       commandExecuted = true;
     }
-    else if (command.includes('повільніше') || command.includes('повільніш')) {
+    else if (command.includes('slower slower')) {
       currentSpeed = Math.max(1, currentSpeed - 10);
       speedSlider.value = currentSpeed;
       prompterSpeedSlider.value = currentSpeed;
       updateUISettings();
       commandExecuted = true;
     }
-    else if (command.includes('вгору') || command.includes('назад') || command.includes('вище')) {
-      scrollPosition += window.innerHeight / 2.5;
+    else if (command.includes('up up')) {
+      scrollPosition += prompterContainer.clientHeight / 2.5;
       updatePrompterTransform();
       sendEvent({ type: 'SCROLL', percentage: getScrollPercentage() });
       commandExecuted = true;
     }
-    else if (command.includes('вниз') || command.includes('вперед') || command.includes('нижче')) {
-      scrollPosition -= window.innerHeight / 2.5;
+    else if (command.includes('down down')) {
+      scrollPosition -= prompterContainer.clientHeight / 2.5;
       updatePrompterTransform();
       sendEvent({ type: 'SCROLL', percentage: getScrollPercentage() });
       commandExecuted = true;
     }
-    else if (command.includes('редактор') || command.includes('вихід')) {
+    else if (command.includes('exit exit')) {
       exitPrompter();
       commandExecuted = true;
     }
@@ -593,7 +746,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (mirrorY && mirrorY.checked) prompterContainer?.classList.add('mirrored-y');
     if (layoutSelect) prompterContainer?.classList.add(layoutSelect.value);
     
-    if (textInput) textInput.value = "Ласкаво просимо до AI Телесуфлера.\n\nТепер ви можете використовувати комп'ютер як пульт для телефону.\n\nКоманди:\n- суфлер старт\n- суфлер стоп\n- суфлер швидше\n- суфлер повільніше";
+    setLanguage('uk'); // Застосувати початкову мову
   } catch(e) {
     alert("Помилка ініціалізації: " + e.message);
   }

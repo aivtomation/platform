@@ -16,44 +16,53 @@
       <!-- Editor/Settings View -->
       <div id="editor-view" class="view active">
         <header>
-          <div class="header-content">
-            <h1>AI Teleprompter</h1>
-            <p class="subtitle">Універсальний телесуфлер з віддаленим керуванням</p>
+          <div class="header-content" style="position: relative;">
+            <h1 data-i18n="title">AI Teleprompter</h1>
+            <p class="subtitle" data-i18n="subtitle">Універсальний телесуфлер з віддаленим керуванням</p>
+            <select id="lang-select" style="position: absolute; right: 0; top: 0; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid #333; border-radius: 4px; padding: 4px; font-size: 0.8rem;">
+              <option value="uk">UA</option>
+              <option value="en">EN</option>
+              <option value="es">ES</option>
+            </select>
           </div>
         </header>
         
         <main class="editor-main">
           <div class="control-panel glass-panel">
             <div class="control-group remote-group" style="margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
-              <label>Віддалене керування (Синхронізація)</label>
+              <label data-i18n="remote_sync">Віддалене керування (Синхронізація)</label>
               <div class="remote-buttons">
-                <button id="btn-mode-local" class="btn-secondary active">Автономно</button>
-                <button id="btn-mode-host" class="btn-secondary">Екран (Телефон)</button>
-                <button id="btn-mode-remote" class="btn-secondary">Пульт (ПК)</button>
+                <button id="btn-mode-local" class="btn-secondary active" data-i18n="mode_local">Автономно</button>
+                <button id="btn-mode-host" class="btn-secondary" data-i18n="mode_host">Екран (Телефон)</button>
+                <button id="btn-mode-remote" class="btn-secondary" data-i18n="mode_remote">Пульт (ПК)</button>
               </div>
               
               <!-- Панель Екрану -->
               <div id="host-panel" class="remote-panel hidden">
-                <p>Код для підключення пульта:</p>
+                <p data-i18n="code_label">Код для підключення пульта:</p>
                 <h3 id="host-code">----</h3>
-                <p id="host-status" class="status waiting">Очікування пульта...</p>
+                <p id="host-status" class="status waiting" data-i18n="status_waiting_remote">Очікування пульта...</p>
               </div>
 
               <!-- Панель Пульта -->
               <div id="remote-panel" class="remote-panel hidden">
-                <input type="text" id="remote-code-input" placeholder="Введіть код з екрану (4 цифри)" maxlength="4" style="width: 100%; text-align: center; font-size: 1.2rem; letter-spacing: 5px; margin-bottom: 0.5rem;">
-                <button id="btn-connect" class="btn-primary" style="padding: 0.5rem; font-size: 1rem; width: 100%; margin-top: 0;">Підключитись</button>
-                <p id="remote-status" class="status" style="margin-top: 0.5rem;">Не підключено</p>
+                <input type="text" id="remote-code-input" data-i18n-placeholder="remote_code_placeholder" placeholder="Введіть код з екрану (4 цифри)" maxlength="4" style="width: 100%; text-align: center; font-size: 1.2rem; letter-spacing: 5px; margin-bottom: 0.5rem;">
+                <button id="btn-connect" class="btn-primary" style="padding: 0.5rem; font-size: 1rem; width: 100%; margin-top: 0;" data-i18n="btn_connect">Підключитись</button>
+                <p id="remote-status" class="status" style="margin-top: 0.5rem;" data-i18n="status_not_connected">Не підключено</p>
               </div>
             </div>
 
-            <h2>Налаштування</h2>
+            <h2 data-i18n="settings">Налаштування</h2>
             <div class="control-group">
-              <label for="speed-slider">Швидкість прокрутки: <span id="speed-value">18</span></label>
+              <label for="global-speed-slider"><span data-i18n="global_speed">Загальна швидкість (%):</span> <span id="global-speed-value">50</span></label>
+              <input type="range" id="global-speed-slider" min="1" max="100" value="50">
+            </div>
+            <div class="control-group">
+              <label for="speed-slider"><span data-i18n="scroll_speed">Швидкість прокрутки:</span> <span id="speed-value">18</span></label>
               <input type="range" id="speed-slider" min="1" max="100" value="18">
             </div>
             <div class="control-group">
-              <label for="size-slider">Розмір шрифту: <span id="size-value">40</span>px</label>
+              <label for="size-slider"><span data-i18n="font_size">Розмір шрифту:</span> <span id="size-value">40</span>px</label>
               <input type="range" id="size-slider" min="20" max="150" value="40">
             </div>
             <div class="control-group row-group">
@@ -65,36 +74,45 @@
             </div>
             <div class="control-group row-group">
               <label class="toggle-switch">
+                <input type="checkbox" id="mirror-x">
+                <span class="slider round"></span>
+              </label>
+              <span class="toggle-label" data-i18n="mirror_x">Дзеркало Горизонталь ↔</span>
+            </div>
+            <div class="control-group row-group">
+              <label class="toggle-switch">
                 <input type="checkbox" id="mirror-y">
                 <span class="slider round"></span>
               </label>
-              <span class="toggle-label">Дзеркало Вертикаль ↕</span>
+              <span class="toggle-label" data-i18n="mirror_y">Дзеркало Вертикаль ↕</span>
             </div>
             <div class="control-group">
-              <label for="layout-select">Розташування тексту</label>
+              <label for="layout-select" data-i18n="layout_label">Розташування тексту</label>
               <select id="layout-select">
-                <option value="layout-full">На весь екран</option>
-                <option value="layout-left">Зліва (для смартфона)</option>
-                <option value="layout-right">Справа (для смартфона)</option>
+                <option value="layout-full" data-i18n="layout_full">На весь екран</option>
+                <option value="layout-left" data-i18n="layout_left">Зліва (для смартфона)</option>
+                <option value="layout-right" data-i18n="layout_right">Справа (для смартфона)</option>
               </select>
             </div>
             
-            <div class="control-group row-group" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+            <div class="control-group row-group" id="voice-control-container" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
               <label class="toggle-switch">
                 <input type="checkbox" id="voice-toggle">
                 <span class="slider round"></span>
               </label>
-              <span class="toggle-label" style="color: var(--accent-color); font-weight: 600;">🎤 Голосове керування</span>
+              <span class="toggle-label" style="color: var(--accent-color); font-weight: 600;" data-i18n="voice_control">🎤 Голосове керування</span>
             </div>
+
+            <button id="start-btn" class="btn-primary" data-i18n="btn_start">Запустити</button>
+            <div id="voice-indicator-editor" class="voice-status" style="display: none;" data-i18n="voice_active">🎤 Голосове управління активно</div>
             
-
-
-            <button id="start-btn" class="btn-primary">Запустити</button>
-            <div id="voice-indicator-editor" class="voice-status" style="display: none;">🎤 Голосове управління активно</div>
+            <div id="voice-instructions" style="margin-top: 1rem; font-size: 0.8rem; color: #888; text-align: center;" data-i18n="instructions">
+              Голосові команди: start start, stop stop, faster faster, slower slower, up up, down down, exit exit
+            </div>
           </div>
           
           <div class="editor-container glass-panel" id="text-panel">
-            <textarea id="text-input" placeholder="Вставте ваш текст сюди..."></textarea>
+            <textarea id="text-input" data-i18n-placeholder="text_placeholder" placeholder="Вставте ваш текст сюди..."></textarea>
           </div>
         </main>
       </div>
