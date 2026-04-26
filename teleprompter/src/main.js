@@ -174,9 +174,11 @@ function setSyncMode(mode) {
   if (peer) { peer.destroy(); peer = null; }
   conn = null;
 
+  const isMobile = window.innerWidth < 768 || navigator.userAgent.match(/Mobi/i);
+
   if (mode === 'local') {
     btnModeLocal.classList.add('active');
-    if (voiceControlContainer) voiceControlContainer.style.display = 'flex';
+    if (voiceControlContainer && !isMobile) voiceControlContainer.style.display = 'flex';
   } 
   else if (mode === 'host') {
     btnModeHost.classList.add('active');
@@ -191,7 +193,7 @@ function setSyncMode(mode) {
   else if (mode === 'remote') {
     btnModeRemote.classList.add('active');
     remotePanel.classList.remove('hidden');
-    if (voiceControlContainer) voiceControlContainer.style.display = 'flex';
+    if (voiceControlContainer && !isMobile) voiceControlContainer.style.display = 'flex';
     initRemote();
   }
   
@@ -755,6 +757,19 @@ window.addEventListener('DOMContentLoaded', () => {
       if (mirrorX) mirrorX.checked = false;
       if (mirrorY) mirrorY.checked = true;
       if (layoutSelect) layoutSelect.value = 'layout-left';
+      
+      // Змінюємо заголовок і вирівнювання
+      i18nDict.uk.title = "Teleprompter";
+      i18nDict.en.title = "Teleprompter";
+      i18nDict.es.title = "Teleprompter";
+      const headerTitleEl = document.querySelector('header h1');
+      if (headerTitleEl && headerTitleEl.parentElement) {
+        headerTitleEl.parentElement.style.textAlign = 'left';
+      }
+      
+      // Повністю ховаємо голосове керування на мобільних пристроях
+      if (voiceControlContainer) voiceControlContainer.style.display = 'none';
+      if (voiceToggle) voiceToggle.checked = false;
     } else {
       if (mirrorX) mirrorX.checked = false;
       if (mirrorY) mirrorY.checked = false;
