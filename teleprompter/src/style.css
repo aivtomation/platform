@@ -88,6 +88,12 @@ header h1 {
   .editor-main {
     flex-direction: column;
   }
+  .control-panel {
+    flex: none;
+  }
+  .editor-container {
+    min-height: 50vh;
+  }
 }
 
 .glass-panel {
