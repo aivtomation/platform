@@ -49,7 +49,7 @@ let lastCommandTime = 0;
 // Словник локалізації
 const i18nDict = {
   uk: {
-    title: "AI Teleprompter",
+    title: "Teleprompter",
     subtitle: "Універсальний телесуфлер з віддаленим керуванням",
     remote_sync: "Віддалене керування (Синхронізація)",
     mode_local: "Автономно",
