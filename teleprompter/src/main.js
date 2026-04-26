@@ -213,7 +213,7 @@ function setSyncMode(mode) {
   }
   
   updateUISettings();
-  if (prompterSpeedSlider && speedSlider) prompterSpeedSlider.value = speedSlider.value;
+  if (prompterSpeedSlider && globalSpeedSlider) prompterSpeedSlider.value = globalSpeedSlider.value;
   
   // Примусове оновлення layout
   if (prompterContainer && layoutSelect) {
@@ -309,6 +309,7 @@ function handleRemoteCommand(data) {
       globalSpeedMultiplier = data.globalSpeedMultiplier;
       if (globalSpeedSlider) globalSpeedSlider.value = data.globalSpeedSliderValue;
       if (globalSpeedValue) globalSpeedValue.textContent = data.globalSpeedSliderValue;
+      if (prompterSpeedSlider) prompterSpeedSlider.value = data.globalSpeedSliderValue;
     }
     updateUISettings();
     startPrompter();
@@ -355,6 +356,7 @@ function handleRemoteCommand(data) {
       globalSpeedSlider.value = data.sliderValue;
       if (globalSpeedValue) globalSpeedValue.textContent = data.sliderValue;
     }
+    if (prompterSpeedSlider) prompterSpeedSlider.value = data.sliderValue;
   }
 }
 
@@ -369,14 +371,16 @@ function updateUISettings() {
 
 speedSlider?.addEventListener('input', (e) => {
   currentSpeed = parseInt(e.target.value);
-  if (prompterSpeedSlider) prompterSpeedSlider.value = currentSpeed;
   updateUISettings();
 });
 
 prompterSpeedSlider?.addEventListener('input', (e) => {
-  currentSpeed = parseInt(e.target.value);
-  if (speedSlider) speedSlider.value = currentSpeed;
-  updateUISettings();
+  globalSpeedMultiplier = parseInt(e.target.value) / 50;
+  if (globalSpeedSlider) {
+    globalSpeedSlider.value = e.target.value;
+    if (globalSpeedValue) globalSpeedValue.textContent = e.target.value;
+  }
+  sendEvent({ type: 'GLOBAL_SPEED', value: globalSpeedMultiplier, sliderValue: e.target.value });
 });
 
 // Щоб клік по повзунку швидкості не ставив на паузу суфлер
@@ -611,14 +615,25 @@ prompterContainer?.addEventListener('wheel', (e) => {
 });
 
 let globalRecognition = null;
+let dummyAudioStream = null; // Хак для утримання мікрофону відкритим
 
 // Голосове управління (тільки якщо Автономно або ми Пульт)
-function initVoiceControl() {
+async function initVoiceControl() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     alert("Ваш браузер не підтримує голосове керування (або воно заблоковано).");
     voiceToggle.checked = false;
     return;
+  }
+
+  // Хак для мобільних браузерів: тримаємо мікрофон активним через getUserMedia,
+  // щоб SpeechRecognition не зупинявся і не просив дозвіл кожні 3 секунди
+  if (!dummyAudioStream && navigator.mediaDevices) {
+    try {
+      dummyAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } catch (err) {
+      console.warn("Не вдалося запустити фоновий мікрофон (можливі запити дозволу):", err);
+    }
   }
 
   globalRecognition = new SpeechRecognition();
@@ -718,8 +733,12 @@ voiceToggle?.addEventListener('change', (e) => {
     if (globalRecognition) {
       globalRecognition.stop();
     }
-    voiceStatusEditor.style.display = 'none';
-    voiceStatusPrompter.style.display = 'none';
+    if (dummyAudioStream) {
+      dummyAudioStream.getTracks().forEach(track => track.stop());
+      dummyAudioStream = null;
+    }
+    if (voiceStatusEditor) voiceStatusEditor.style.display = 'none';
+    if (voiceStatusPrompter) voiceStatusPrompter.style.display = 'none';
   }
 });
 
