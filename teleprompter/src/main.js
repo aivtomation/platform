@@ -77,7 +77,7 @@ const i18nDict = {
     instructions: "Голосові команди: start start, stop stop, faster faster, slower slower, up up, down down, exit exit"
   },
   en: {
-    title: "AI Teleprompter",
+    title: "Teleprompter",
     subtitle: "Universal teleprompter with remote control",
     remote_sync: "Remote Control (Sync)",
     mode_local: "Local",
@@ -105,7 +105,7 @@ const i18nDict = {
     instructions: "Voice Commands: start start, stop stop, faster faster, slower slower, up up, down down, exit exit"
   },
   es: {
-    title: "AI Teleprompter",
+    title: "Teleprompter",
     subtitle: "Teleprompter universal con control remoto",
     remote_sync: "Control remoto (Sincronización)",
     mode_local: "Local",
