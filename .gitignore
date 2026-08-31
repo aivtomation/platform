@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+dist/
+
+# Logs
+*.log
+
+# Scripts with secrets or local configs
+setup_pages.ps1
+*.local
+*.env
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

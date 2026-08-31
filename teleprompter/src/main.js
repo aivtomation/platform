@@ -28,9 +28,14 @@ const hostPanel = document.getElementById('host-panel');
 const remotePanel = document.getElementById('remote-panel');
 const hostCodeEl = document.getElementById('host-code');
 const hostStatus = document.getElementById('host-status');
+const hostCodeLabel = document.getElementById('host-code-label');
+const btnHostCodePerm = document.getElementById('btn-host-code-perm');
+const btnHostCodeTemp = document.getElementById('btn-host-code-temp');
+const btnRegenerateCode = document.getElementById('btn-regenerate-code');
 const remoteCodeInput = document.getElementById('remote-code-input');
 const btnConnect = document.getElementById('btn-connect');
 const remoteStatus = document.getElementById('remote-status');
+const btnQuickAdmin = document.getElementById('btn-quick-admin');
 
 // Нові елементи
 const langSelect = document.getElementById('lang-select');
@@ -45,6 +50,9 @@ let animationFrameId = null;
 let currentSpeed = 18;
 let globalSpeedMultiplier = 1.0;
 let lastCommandTime = 0;
+let currentLang = 'uk';
+let hostCodeType = localStorage.getItem('tp_host_code_type') || 'permanent'; // 'permanent' (1000) або 'temporary'
+let currentHostCode = '1000';
 
 // Словник локалізації
 const i18nDict = {
@@ -56,6 +64,12 @@ const i18nDict = {
     mode_host: "Екран (Телефон)",
     mode_remote: "Пульт (ПК)",
     code_label: "Код для підключення пульта:",
+    code_type_permanent: "Постійний (1000)",
+    code_type_random: "Одноразовий (🎲)",
+    code_label_perm: "Постійний код адміна:",
+    code_label_temp: "Одноразовий код:",
+    btn_quick_admin: "Адмін: 1000",
+    remote_code_hint: "Код підключення:",
     status_waiting_remote: "Очікування пульта...",
     remote_code_placeholder: "Введіть код з екрану (4 цифри)",
     btn_connect: "Підключитись",
@@ -84,6 +98,12 @@ const i18nDict = {
     mode_host: "Screen (Phone)",
     mode_remote: "Remote (PC)",
     code_label: "Code to connect remote:",
+    code_type_permanent: "Permanent (1000)",
+    code_type_random: "One-time (🎲)",
+    code_label_perm: "Permanent admin code:",
+    code_label_temp: "One-time code:",
+    btn_quick_admin: "Admin: 1000",
+    remote_code_hint: "Connection code:",
     status_waiting_remote: "Waiting for remote...",
     remote_code_placeholder: "Enter screen code (4 digits)",
     btn_connect: "Connect",
@@ -112,6 +132,12 @@ const i18nDict = {
     mode_host: "Pantalla (Teléfono)",
     mode_remote: "Remoto (PC)",
     code_label: "Código para conectar el control remoto:",
+    code_type_permanent: "Permanente (1000)",
+    code_type_random: "De un solo uso (🎲)",
+    code_label_perm: "Código permanente de admin:",
+    code_label_temp: "Código de un solo uso:",
+    btn_quick_admin: "Admin: 1000",
+    remote_code_hint: "Código de conexión:",
     status_waiting_remote: "Esperando al control remoto...",
     remote_code_placeholder: "Introducir código de pantalla (4 dígitos)",
     btn_connect: "Conectar",
@@ -135,6 +161,7 @@ const i18nDict = {
 };
 
 function setLanguage(lang) {
+  currentLang = lang;
   const dict = i18nDict[lang] || i18nDict['uk'];
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
@@ -152,6 +179,13 @@ function setLanguage(lang) {
       }
     }
   });
+  if (hostCodeLabel) {
+    if (hostCodeType === 'permanent') {
+      hostCodeLabel.textContent = dict.code_label_perm || dict.code_label;
+    } else {
+      hostCodeLabel.textContent = dict.code_label_temp || dict.code_label;
+    }
+  }
 }
 
 langSelect?.addEventListener('change', (e) => setLanguage(e.target.value));
@@ -239,67 +273,185 @@ function sendEvent(data) {
 
 // Ініціалізація Екрану (Host)
 function initHost() {
-  const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4 цифри
-  hostCodeEl.textContent = code;
-  hostStatus.textContent = "Створення кімнати...";
-  hostStatus.className = "status waiting";
+  if (peer) {
+    peer.destroy();
+    peer = null;
+  }
+  conn = null;
 
-  peer = new Peer('aivtomation-tp-' + code);
+  const dict = i18nDict[currentLang] || i18nDict['uk'];
 
-  peer.on('open', () => {
-    hostStatus.textContent = "Очікування підключення пульта...";
-  });
+  if (hostCodeType === 'permanent') {
+    currentHostCode = '1000';
+    if (btnHostCodePerm) btnHostCodePerm.classList.add('active');
+    if (btnHostCodeTemp) btnHostCodeTemp.classList.remove('active');
+    if (btnRegenerateCode) btnRegenerateCode.classList.add('hidden');
+    if (hostCodeLabel) hostCodeLabel.textContent = dict.code_label_perm || dict.code_label;
+  } else {
+    // 4-значний одноразовий випадковий код (1001-9999)
+    let rand = Math.floor(1000 + Math.random() * 9000).toString();
+    if (rand === '1000') rand = '1001';
+    currentHostCode = rand;
+    if (btnHostCodePerm) btnHostCodePerm.classList.remove('active');
+    if (btnHostCodeTemp) btnHostCodeTemp.classList.add('active');
+    if (btnRegenerateCode) btnRegenerateCode.classList.remove('hidden');
+    if (hostCodeLabel) hostCodeLabel.textContent = dict.code_label_temp || dict.code_label;
+  }
 
-  peer.on('connection', (connection) => {
-    conn = connection;
-    hostStatus.textContent = "Пульт підключено!";
-    hostStatus.className = "status connected";
+  if (hostCodeEl) hostCodeEl.textContent = currentHostCode;
+  if (hostStatus) {
+    hostStatus.textContent = currentLang === 'uk' ? "Створення кімнати..." : (currentLang === 'es' ? "Creando sala..." : "Creating room...");
+    hostStatus.className = "status waiting";
+  }
 
-    conn.on('data', (data) => {
-      console.log("Отримано команду від пульта:", data);
-      handleRemoteCommand(data);
+  try {
+    peer = new Peer('aivtomation-tp-' + currentHostCode);
+
+    peer.on('open', () => {
+      if (hostStatus) {
+        hostStatus.textContent = dict.status_waiting_remote || "Очікування пульта...";
+        hostStatus.className = "status waiting";
+      }
     });
 
-    conn.on('close', () => {
-      hostStatus.textContent = "Пульт відключено. Очікування...";
-      hostStatus.className = "status waiting";
-    });
-  });
+    peer.on('connection', (connection) => {
+      conn = connection;
+      if (hostStatus) {
+        hostStatus.textContent = currentLang === 'uk' ? "Пульт підключено!" : (currentLang === 'es' ? "¡Control remoto conectado!" : "Remote connected!");
+        hostStatus.className = "status connected";
+      }
 
-  peer.on('error', (err) => {
-    hostStatus.textContent = "Помилка мережі: " + err.type;
-    hostStatus.className = "status error";
-  });
+      conn.on('data', (data) => {
+        console.log("Отримано команду від пульта:", data);
+        handleRemoteCommand(data);
+      });
+
+      conn.on('close', () => {
+        if (hostStatus) {
+          hostStatus.textContent = currentLang === 'uk' ? "Пульт відключено. Очікування..." : (currentLang === 'es' ? "Control remoto desconectado. Esperando..." : "Remote disconnected. Waiting...");
+          hostStatus.className = "status waiting";
+        }
+      });
+    });
+
+    peer.on('error', (err) => {
+      console.warn("Peer error:", err);
+      if (hostStatus) {
+        if (err.type === 'unavailable-id') {
+          hostStatus.textContent = currentLang === 'uk'
+            ? `Код ${currentHostCode} зайнятий на сервері (зачекайте 15 сек або згенеруйте новий)`
+            : (currentLang === 'es'
+              ? `El código ${currentHostCode} está ocupado (espere 15s o genere uno nuevo)`
+              : `Code ${currentHostCode} is occupied (wait 15s or generate a new code)`);
+        } else {
+          hostStatus.textContent = (currentLang === 'uk' ? "Помилка мережі: " : "Network error: ") + err.type;
+        }
+        hostStatus.className = "status error";
+      }
+    });
+  } catch (err) {
+    if (hostStatus) {
+      hostStatus.textContent = "Помилка: " + err.message;
+      hostStatus.className = "status error";
+    }
+  }
 }
+
+// Кнопки вибору типу коду (Постійний / Одноразовий)
+btnHostCodePerm?.addEventListener('click', () => {
+  if (hostCodeType === 'permanent' && peer && !peer.destroyed) return;
+  hostCodeType = 'permanent';
+  localStorage.setItem('tp_host_code_type', 'permanent');
+  initHost();
+});
+
+btnHostCodeTemp?.addEventListener('click', () => {
+  hostCodeType = 'temporary';
+  localStorage.setItem('tp_host_code_type', 'temporary');
+  initHost();
+});
+
+btnRegenerateCode?.addEventListener('click', () => {
+  if (hostCodeType === 'temporary') {
+    initHost();
+  }
+});
 
 // Ініціалізація Пульта (Remote)
 function initRemote() {
+  if (peer) {
+    peer.destroy();
+    peer = null;
+  }
   peer = new Peer(); // Пульту не потрібен специфічний ID
-  remoteStatus.textContent = "Введіть код та натисніть Підключитись";
-  remoteStatus.className = "status";
+
+  const savedCode = localStorage.getItem('tp_remote_code') || '1000';
+  if (remoteCodeInput) {
+    remoteCodeInput.value = savedCode;
+  }
+
+  if (remoteStatus) {
+    remoteStatus.textContent = currentLang === 'uk' ? "Введіть код та натисніть Підключитись" : (currentLang === 'es' ? "Introduzca el código y haga clic en Conectar" : "Enter code and click Connect");
+    remoteStatus.className = "status";
+  }
 }
 
+btnQuickAdmin?.addEventListener('click', () => {
+  if (remoteCodeInput) {
+    remoteCodeInput.value = '1000';
+    remoteCodeInput.focus();
+  }
+});
+
+remoteCodeInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    btnConnect?.click();
+  }
+});
+
 btnConnect?.addEventListener('click', () => {
-  if (!peer) return;
-  const code = remoteCodeInput.value.trim();
+  if (!peer) {
+    peer = new Peer();
+  }
+  const code = remoteCodeInput ? remoteCodeInput.value.trim() : '';
   if (code.length !== 4) {
-    alert("Введіть 4 цифри");
+    alert(currentLang === 'uk' ? "Введіть 4 цифри" : (currentLang === 'es' ? "Introduzca 4 dígitos" : "Enter 4 digits"));
     return;
   }
 
-  remoteStatus.textContent = "Підключення...";
-  remoteStatus.className = "status waiting";
+  localStorage.setItem('tp_remote_code', code);
+
+  if (remoteStatus) {
+    remoteStatus.textContent = currentLang === 'uk' ? "Підключення..." : (currentLang === 'es' ? "Conectando..." : "Connecting...");
+    remoteStatus.className = "status waiting";
+  }
+
+  if (conn) {
+    try { conn.close(); } catch(e) {}
+  }
 
   conn = peer.connect('aivtomation-tp-' + code);
 
   conn.on('open', () => {
-    remoteStatus.textContent = "Підключено! Тепер ви керуєте екраном.";
-    remoteStatus.className = "status connected";
+    if (remoteStatus) {
+      remoteStatus.textContent = currentLang === 'uk' ? "Підключено! Тепер ви керуєте екраном." : (currentLang === 'es' ? "¡Conectado! Ahora controlas la pantalla." : "Connected! You are controlling the screen.");
+      remoteStatus.className = "status connected";
+    }
   });
 
   conn.on('close', () => {
-    remoteStatus.textContent = "Відключено від екрану.";
-    remoteStatus.className = "status error";
+    if (remoteStatus) {
+      remoteStatus.textContent = currentLang === 'uk' ? "Відключено від екрану." : (currentLang === 'es' ? "Desconectado de la pantalla." : "Disconnected from screen.");
+      remoteStatus.className = "status error";
+    }
+  });
+
+  conn.on('error', (err) => {
+    if (remoteStatus) {
+      remoteStatus.textContent = "Помилка: " + err;
+      remoteStatus.className = "status error";
+    }
   });
 });
 
@@ -783,5 +935,11 @@ window.addEventListener('DOMContentLoaded', () => {
     setLanguage('uk'); // Застосувати початкову мову
   } catch(e) {
     alert("Помилка ініціалізації: " + e.message);
+  }
+});
+
+window.addEventListener('beforeunload', () => {
+  if (peer) {
+    try { peer.destroy(); } catch(e) {}
   }
 });

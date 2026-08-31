@@ -39,14 +39,25 @@
               
               <!-- Панель Екрану -->
               <div id="host-panel" class="remote-panel hidden">
-                <p data-i18n="code_label">Код для підключення пульта:</p>
-                <h3 id="host-code">----</h3>
+                <div class="code-type-selector">
+                  <button id="btn-host-code-perm" type="button" class="btn-secondary active" data-i18n="code_type_permanent">Постійний (1000)</button>
+                  <button id="btn-host-code-temp" type="button" class="btn-secondary" data-i18n="code_type_random">Одноразовий (🎲)</button>
+                </div>
+                <p id="host-code-label" data-i18n="code_label">Код для підключення пульта:</p>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                  <h3 id="host-code">1000</h3>
+                  <button id="btn-regenerate-code" type="button" class="btn-secondary hidden" title="Згенерувати інший код" style="padding: 0.4rem 0.6rem; font-size: 0.9rem; flex: none; border-radius: 6px;">🔄</button>
+                </div>
                 <p id="host-status" class="status waiting" data-i18n="status_waiting_remote">Очікування пульта...</p>
               </div>
 
               <!-- Панель Пульта -->
               <div id="remote-panel" class="remote-panel hidden">
-                <input type="text" id="remote-code-input" data-i18n-placeholder="remote_code_placeholder" placeholder="Введіть код з екрану (4 цифри)" maxlength="4" style="width: 100%; text-align: center; font-size: 1.2rem; letter-spacing: 5px; margin-bottom: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                  <span style="font-size: 0.8rem; color: var(--text-secondary);" data-i18n="remote_code_hint">Код підключення:</span>
+                  <button id="btn-quick-admin" type="button" class="btn-secondary" style="padding: 2px 8px; font-size: 0.75rem; flex: none;" data-i18n="btn_quick_admin">Адмін: 1000</button>
+                </div>
+                <input type="text" id="remote-code-input" data-i18n-placeholder="remote_code_placeholder" placeholder="Введіть код з екрану (4 цифри)" maxlength="4" value="1000" style="width: 100%; text-align: center; font-size: 1.2rem; letter-spacing: 5px; margin-bottom: 0.5rem;">
                 <button id="btn-connect" class="btn-primary" style="padding: 0.5rem; font-size: 1rem; width: 100%; margin-top: 0;" data-i18n="btn_connect">Підключитись</button>
                 <p id="remote-status" class="status" style="margin-top: 0.5rem;" data-i18n="status_not_connected">Не підключено</p>
               </div>
