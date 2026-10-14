@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 dist/
+__pycache__/
+*.pyc
 
 # Logs
 *.log
@@ -15,3 +17,16 @@ setup_pages.ps1
 Thumbs.db
 .vscode/
 .idea/
+
+# Media Worker Temp & Binaries
+media_worker/temp_jobs/
+media_worker/worker.log
+media_worker/test_*.png
+media_worker/local_config.py
+*.mp4
+*.mov
+*.wav
+*.mp3
+archive/
+
+
