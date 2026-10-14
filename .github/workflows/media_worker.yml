@@ -40,7 +40,7 @@ jobs:
       - name: Install System Dependencies & Fonts
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg fontconfig fonts-dejavu-core fonts-liberation
+          sudo apt-get install -y -qq ffmpeg fontconfig fonts-dejavu-core fonts-liberation libvulkan1 mesa-vulkan-drivers
           mkdir -p ~/.local/share/fonts
           sudo mkdir -p /usr/share/fonts/truetype/custom
           cp media_worker/fonts/*.ttf ~/.local/share/fonts/ 2>/dev/null || true
@@ -57,5 +57,7 @@ jobs:
           AIV_SECRET_KEY: ${{ secrets.AIV_SECRET_KEY || 'run_cron_123' }}
           AIV_SERVER_URL: ${{ github.event.client_payload.server_url || inputs.server_url || 'https://aivtomation.com/crossposting/app/media_worker_api.php' }}
           TARGET_JOB_ID: ${{ github.event.client_payload.job_id || inputs.job_id || '' }}
+          VK_ICD_FILENAMES: /usr/share/vulkan/icd.d/lvp_icd.x86_64.json
+          LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           python media_worker/github_worker.py
