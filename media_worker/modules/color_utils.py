@@ -5,15 +5,22 @@ _LIBPLACEBO_AVAILABLE = None
 
 def has_libplacebo() -> bool:
     """
-    Checks if FFmpeg has libplacebo filter enabled.
-    libplacebo is the gold standard for HDR->SDR tone-mapping,
-    preserving Apple iPhone natural warm skin tones and dynamic range.
+    Checks if FFmpeg has libplacebo filter enabled AND working at runtime.
+    On headless cloud runners (GitHub Actions / Linux VMs without Vulkan GPU),
+    libplacebo is compiled into FFmpeg but crashes at runtime with exit code 187.
+    Testing execution directly ensures 100% stability.
     """
     global _LIBPLACEBO_AVAILABLE
     if _LIBPLACEBO_AVAILABLE is None:
         try:
-            res = subprocess.run(["ffmpeg", "-filters"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            _LIBPLACEBO_AVAILABLE = "libplacebo" in res.stdout
+            test_cmd = [
+                "ffmpeg", "-v", "error", "-f", "lavfi",
+                "-i", "color=c=black:s=16x16:d=0.05",
+                "-vf", "libplacebo=colorspace=bt709",
+                "-f", "null", "-"
+            ]
+            res = subprocess.run(test_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3)
+            _LIBPLACEBO_AVAILABLE = (res.returncode == 0)
         except Exception:
             _LIBPLACEBO_AVAILABLE = False
     return _LIBPLACEBO_AVAILABLE
@@ -50,8 +57,14 @@ def has_zscale() -> bool:
     global _ZSCALE_AVAILABLE
     if _ZSCALE_AVAILABLE is None:
         try:
-            res = subprocess.run(["ffmpeg", "-filters"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            _ZSCALE_AVAILABLE = "zscale" in res.stdout
+            test_cmd = [
+                "ffmpeg", "-v", "error", "-f", "lavfi",
+                "-i", "color=c=black:s=16x16:d=0.05",
+                "-vf", "zscale=t=linear",
+                "-f", "null", "-"
+            ]
+            res = subprocess.run(test_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3)
+            _ZSCALE_AVAILABLE = (res.returncode == 0)
         except Exception:
             _ZSCALE_AVAILABLE = False
     return _ZSCALE_AVAILABLE

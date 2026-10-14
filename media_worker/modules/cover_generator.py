@@ -202,6 +202,7 @@ def generate_and_apply_cover(input_video: str, output_video: str, caption_or_top
 
     # Step 1: Capture clear frame from second 1.5
     hdr_trc = probe_video_color(src_for_frame)
+    frame_captured = False
     if hdr_trc:
         vf_frame = get_tonemap_filter(hdr_trc)
         cmd_frame = [
@@ -213,8 +214,15 @@ def generate_and_apply_cover(input_video: str, output_video: str, caption_or_top
             "-q:v", "2",
             frame_path
         ]
-    else:
-        cmd_frame = [
+        try:
+            subprocess.run(cmd_frame, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            frame_captured = os.path.exists(frame_path) and os.path.getsize(frame_path) > 1000
+        except Exception as e:
+            print(f"Tonemapped frame capture failed ({e}), falling back to direct capture...")
+            frame_captured = False
+
+    if not frame_captured:
+        cmd_frame_std = [
             "ffmpeg", "-y",
             "-ss", "00:00:01.5",
             "-i", src_for_frame,
@@ -222,7 +230,7 @@ def generate_and_apply_cover(input_video: str, output_video: str, caption_or_top
             "-q:v", "2",
             frame_path
         ]
-    subprocess.run(cmd_frame, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        subprocess.run(cmd_frame_std, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
     # Step 2: Determine Cover Headline
     headline_text = ""
