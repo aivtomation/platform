@@ -77,6 +77,11 @@ Whenever any product or background worker encounters an execution or API failure
    - Immediate Telegram alert with incident summary, diagnosis, action taken, and a 1-click Rollback URL.
    - Formatted 1-click Antigravity prompt block for human verification in chat:
      `"Перевір автоматичне виправлення багу #ID: [Platform: X, Error: Y]. Чи все зроблено вірно?"`
+5. **Circuit Breaker & Anti-Loop Safeguards**:
+   - **LLM Rate Limiter**: Maximum 3 AI SRE calls per client per 15-minute window (checked via `aiv_resource_logs`). If exceeded, trips safe fallback (`circuit_breaker_cooldown`, 0 токенів / 0.00 UAH).
+   - **Telegram Anti-Flood**: Cooldown of 15 minutes per error signature or job ID to prevent alert storming.
+   - **Database Deduplication**: Repeated errors within 15 minutes increment `occurrence_count` on the existing row instead of spawning duplicate entries.
+   - **UI Max Retries (Max 3)**: Each job tracks `retry_count`. After 3 failed attempts, the UI locks the retry action with `Спроб вичерпано (3/3)` and guides user to token renewal or support.
 
 ---
 *Created: October 2026 | Antigravity AI Engine for Aivtomation Ecosystem*
