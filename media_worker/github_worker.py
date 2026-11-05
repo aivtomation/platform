@@ -27,6 +27,7 @@ os.environ["AIV_HARDWARE_NAME"] = "GitHub Actions Cloud Runner (Ubuntu 2 vCPU / 
 from local_worker import (
     process_single_job,
     process_stt_job,
+    process_compress_telegram_job,
     SERVER_URLS,
     SECRET_KEY,
     WORKER_TYPE,
@@ -89,13 +90,17 @@ def main():
                         job["_server_url"] = s_url
                         job_id = job.get("id", "unknown")
                         is_stt = (job.get("job_type") == "stt" or job.get("type") == "stt")
+                        is_compress = (job.get("job_type") == "compress_telegram" or job.get("type") == "compress_telegram")
 
+                        job_label = "STT" if is_stt else ("Telegram Compress" if is_compress else "Video Montage")
                         print("\n" + "#" * 60)
-                        print(f"🎬 [JOB START] Processing Job ID: {job_id} ({'STT' if is_stt else 'Video Montage'})")
+                        print(f"🎬 [JOB START] Processing Job ID: {job_id} ({job_label})")
                         print("#" * 60)
 
                         if is_stt:
                             process_stt_job(job)
+                        elif is_compress:
+                            process_compress_telegram_job(job)
                         else:
                             process_single_job(job)
 

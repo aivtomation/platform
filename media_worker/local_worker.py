@@ -66,8 +66,8 @@ except Exception:
     pass
 
 def send_telegram_alert(text: str):
-    bot_token = "8915027231:AAGGLkrcPHgpNChy5ShmLOaKwu8QgYJYkIE"
-    chat_id = "425927724"
+    bot_token = os.getenv("LOG_PROBLEMS_BOT_TOKEN", "8915027231:AAGRPrSEYXCCfJwVpwQg_o78CrFoVNJChGA")
+    chat_id = os.getenv("LOG_PROBLEMS_CHAT_ID", "425927724")
     try:
         requests.post(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
@@ -81,11 +81,9 @@ from modules.subtitle_burner import burn_subtitles_into_video
 from modules.cover_generator import generate_and_apply_cover
 from modules.silence_remover import remove_silence_from_video
 
-# Multi-environment support: service Stage 1, Stage 2 and Production
+# Server endpoints
 DEFAULT_URLS = [
-    "https://aivtomation.com/crossposting/app/media_worker_api.php",
-    "https://aivtomation.com/crossposting-stage/app/media_worker_api.php",
-    "https://aivtomation.com/crossposting-stage2/app/media_worker_api.php"
+    "https://aivtomation.com/crossposting/app/media_worker_api.php"
 ]
 custom_url = os.getenv("AIV_SERVER_URL")
 if custom_url:
@@ -426,6 +424,168 @@ def process_stt_job(job: dict):
     finally:
         shutil.rmtree(job_dir, ignore_errors=True)
 
+def compress_video_for_telegram(input_path: str, output_path: str, target_max_mb: float = 43.5) -> str:
+    """
+    Compresses video to <= target_max_mb (default 43.5 MB for Telegram Bot API <= 50MB ceiling).
+    Calculates target bitrate dynamically based on duration, selects optimal resolution,
+    and uses fast multi-threaded H.264 encoding with Web-optimized moov atom.
+    """
+    duration = max(1.0, get_video_duration(input_path))
+    target_bytes = target_max_mb * 1024 * 1024
+    total_bitrate = (target_bytes * 8) / duration
+
+    # Allocate audio bitrate: 96k for videos > 10 min, 128k for standard length
+    audio_kbps = 96 if duration > 600 else 128
+    audio_bps = audio_kbps * 1000
+
+    # Calculate video bitrate (floor at 280k, ceiling at 6000k)
+    video_bps = max(280 * 1000, int(total_bitrate - audio_bps))
+    video_kbps = min(6000, int(video_bps / 1000))
+
+    # Adaptive resolution scaling based on available bitrate:
+    # >= 2200 kbps: 1080p
+    # 1000 - 2199 kbps: 720p
+    # < 1000 kbps: 540p
+    if video_kbps >= 2200:
+        scale_filter = "scale='min(1080,iw)':-2"
+    elif video_kbps >= 1000:
+        scale_filter = "scale='min(720,iw)':-2"
+    else:
+        scale_filter = "scale='min(540,iw)':-2"
+
+    vf = f"{scale_filter},format=yuv420p"
+    maxrate_kbps = int(video_kbps * 1.15)
+    bufsize_kbps = int(video_kbps * 2.0)
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", os.path.abspath(input_path),
+        "-vf", vf,
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-b:v", f"{video_kbps}k",
+        "-maxrate", f"{maxrate_kbps}k",
+        "-bufsize", f"{bufsize_kbps}k",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", f"{audio_kbps}k",
+        "-movflags", "+faststart",
+        os.path.abspath(output_path)
+    ]
+
+    print(f"  🎬 FFmpeg компресія Telegram: {video_kbps}k v-bitrate, {audio_kbps}k audio, {scale_filter}...")
+    subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+
+    # Verify output file size <= 44.8 MB
+    if os.path.exists(output_path):
+        out_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+        print(f"  📊 Розмір після першого проходу: {out_size_mb:.2f} МБ")
+        if out_size_mb > 44.8:
+            print("  ⚠️ Розмір перевищує ліміт! Запуск другого проходу зі зниженим бітрейтом...")
+            video_kbps_pass2 = int(video_kbps * 0.82)
+            cmd_p2 = [
+                "ffmpeg", "-y",
+                "-i", os.path.abspath(input_path),
+                "-vf", vf,
+                "-c:v", "libx264",
+                "-preset", "fast",
+                "-b:v", f"{video_kbps_pass2}k",
+                "-maxrate", f"{int(video_kbps_pass2 * 1.15)}k",
+                "-bufsize", f"{int(video_kbps_pass2 * 2.0)}k",
+                "-pix_fmt", "yuv420p",
+                "-c:a", "aac",
+                "-b:a", f"{audio_kbps}k",
+                "-movflags", "+faststart",
+                os.path.abspath(output_path)
+            ]
+            subprocess.run(cmd_p2, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            out_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+            print(f"  📊 Фінальний розмір після коригування: {out_size_mb:.2f} МБ")
+
+    return output_path
+
+def process_compress_telegram_job(job: dict):
+    job_id = job.get("id")
+    parent_job_id = job.get("parent_job_id", "")
+    server_url = job.get("_server_url", SERVER_URLS[0])
+    source_url = job.get("source_url")
+    target_max_mb = float(job.get("target_max_mb") or 43.5)
+
+    print("\n" + "=" * 60)
+    print(f"📦 [НОВЕ ЗАВДАННЯ ОПТИМІЗАЦІЇ ДЛЯ TELEGRAM] Job ID: {job_id}")
+    if parent_job_id:
+        print(f"🔗 Батьківський пост: {parent_job_id}")
+    print(f"🎯 Цільовий ліміт розміру: <= {target_max_mb} МБ")
+    print(f"🌐 Джерело: {source_url}")
+    start_time = time.time()
+
+    job_dir = os.path.join(WORK_TEMP_DIR, job_id)
+    os.makedirs(job_dir, exist_ok=True)
+    raw_video = os.path.join(job_dir, "input.mp4")
+    out_video = os.path.join(job_dir, "telegram_compressed.mp4")
+
+    try:
+        report_job_progress(job_id, progress=15, stage_msg="Завантаження відео для оптимізації під Telegram...", server_url=server_url)
+
+        # Step 1: Download raw video
+        download_video(source_url, raw_video)
+        raw_size_mb = os.path.getsize(raw_video) / (1024 * 1024)
+        total_duration = get_video_duration(raw_video)
+        print(f"  ⏱️ Тривалість: {total_duration:.1f} сек, розмір: {raw_size_mb:.2f} МБ")
+
+        # If already <= 44.5 MB, no compression needed!
+        if raw_size_mb <= 44.5:
+            print("  ✅ Відео вже менше 44.5 МБ. Перекодування не потрібне!")
+            report_job_progress(job_id, progress=90, stage_msg="Відео вже відповідає умовам Telegram...", server_url=server_url)
+            shutil.copy2(raw_video, out_video)
+        else:
+            report_job_progress(job_id, progress=35, stage_msg="Швидке стиснення до 43.5 МБ на ПК воркері...", server_url=server_url)
+            compress_video_for_telegram(raw_video, out_video, target_max_mb=target_max_mb)
+
+        final_size_mb = os.path.getsize(out_video) / (1024 * 1024)
+        report_job_progress(job_id, progress=85, stage_msg=f"Стиснуто до {final_size_mb:.2f} МБ. Відправка на сервер...", server_url=server_url)
+
+        # Upload compressed MP4 to server
+        target_endpoint = server_url or SERVER_URLS[0]
+        with open(out_video, "rb") as vf:
+            files = {"video": ("telegram_compressed.mp4", vf, "video/mp4")}
+            data = {
+                "job_id": job_id,
+                "parent_job_id": parent_job_id,
+                "job_type": "compress_telegram",
+                "final_size_mb": round(final_size_mb, 2)
+            }
+            res = requests.post(
+                target_endpoint,
+                params={"action": "complete_compress_job", "secret": SECRET_KEY},
+                data=data,
+                files=files,
+                timeout=180
+            )
+            res.raise_for_status()
+            res_json = res.json()
+            if not res_json.get("success"):
+                raise Exception(res_json.get("message", "Upload error"))
+
+        report_job_progress(job_id, progress=100, stage_msg=f"Готово! Відео оптимізовано для Telegram ({final_size_mb:.2f} МБ)", est_remain=0, server_url=server_url)
+        duration = round(time.time() - start_time, 2)
+        print(f"🎉 [TELEGRAM ОПТИМІЗАЦІЮ ЗАВЕРШЕНО ЗА {duration} СЕК] Розмір: {final_size_mb:.2f} МБ (Було: {raw_size_mb:.2f} МБ)")
+        print("=" * 60)
+
+    except Exception as e:
+        print(f"❌ [ПОМИЛКА ОПТИМІЗАЦІЇ TELEGRAM]: {e}")
+        try:
+            requests.post(
+                server_url,
+                params={"action": "fail_job", "secret": SECRET_KEY},
+                data={"job_id": job_id, "error": str(e)},
+                timeout=5
+            )
+        except Exception:
+            pass
+    finally:
+        shutil.rmtree(job_dir, ignore_errors=True)
+
 def process_single_job(job: dict):
     job_id = job.get("id")
     server_url = job.get("_server_url", SERVER_URLS[0])
@@ -610,8 +770,11 @@ def main():
                     if data.get("has_job") and data.get("job"):
                         job = data["job"]
                         job["_server_url"] = s_url
-                        if job.get("job_type") == "stt" or job.get("type") == "stt":
+                        job_type = job.get("job_type") or job.get("type")
+                        if job_type == "stt":
                             process_stt_job(job)
+                        elif job_type == "compress_telegram":
+                            process_compress_telegram_job(job)
                         else:
                             process_single_job(job)
             except requests.exceptions.ConnectionError:
