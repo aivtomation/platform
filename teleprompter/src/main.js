@@ -28,14 +28,9 @@ const hostPanel = document.getElementById('host-panel');
 const remotePanel = document.getElementById('remote-panel');
 const hostCodeEl = document.getElementById('host-code');
 const hostStatus = document.getElementById('host-status');
-const hostCodeLabel = document.getElementById('host-code-label');
-const btnHostCodePerm = document.getElementById('btn-host-code-perm');
-const btnHostCodeTemp = document.getElementById('btn-host-code-temp');
-const btnRegenerateCode = document.getElementById('btn-regenerate-code');
 const remoteCodeInput = document.getElementById('remote-code-input');
 const btnConnect = document.getElementById('btn-connect');
 const remoteStatus = document.getElementById('remote-status');
-const btnQuickAdmin = document.getElementById('btn-quick-admin');
 
 // Нові елементи
 const langSelect = document.getElementById('lang-select');
@@ -48,11 +43,9 @@ let isPlaying = false;
 let scrollPosition = 0;
 let animationFrameId = null;
 let currentSpeed = 18;
-let globalSpeedMultiplier = 1.0;
+let globalSpeedMultiplier = 41 / 50;
 let lastCommandTime = 0;
 let currentLang = 'uk';
-let hostCodeType = localStorage.getItem('tp_host_code_type') || 'permanent'; // 'permanent' (1000) або 'temporary'
-let currentHostCode = '1000';
 
 // Словник локалізації
 const i18nDict = {
@@ -64,12 +57,6 @@ const i18nDict = {
     mode_host: "Екран (Телефон)",
     mode_remote: "Пульт (ПК)",
     code_label: "Код для підключення пульта:",
-    code_type_permanent: "Постійний (1000)",
-    code_type_random: "Одноразовий (🎲)",
-    code_label_perm: "Постійний код адміна:",
-    code_label_temp: "Одноразовий код:",
-    btn_quick_admin: "Адмін: 1000",
-    remote_code_hint: "Код підключення:",
     status_waiting_remote: "Очікування пульта...",
     remote_code_placeholder: "Введіть код з екрану (4 цифри)",
     btn_connect: "Підключитись",
@@ -98,12 +85,6 @@ const i18nDict = {
     mode_host: "Screen (Phone)",
     mode_remote: "Remote (PC)",
     code_label: "Code to connect remote:",
-    code_type_permanent: "Permanent (1000)",
-    code_type_random: "One-time (🎲)",
-    code_label_perm: "Permanent admin code:",
-    code_label_temp: "One-time code:",
-    btn_quick_admin: "Admin: 1000",
-    remote_code_hint: "Connection code:",
     status_waiting_remote: "Waiting for remote...",
     remote_code_placeholder: "Enter screen code (4 digits)",
     btn_connect: "Connect",
@@ -132,12 +113,6 @@ const i18nDict = {
     mode_host: "Pantalla (Teléfono)",
     mode_remote: "Remoto (PC)",
     code_label: "Código para conectar el control remoto:",
-    code_type_permanent: "Permanente (1000)",
-    code_type_random: "De un solo uso (🎲)",
-    code_label_perm: "Código permanente de admin:",
-    code_label_temp: "Código de un solo uso:",
-    btn_quick_admin: "Admin: 1000",
-    remote_code_hint: "Código de conexión:",
     status_waiting_remote: "Esperando al control remoto...",
     remote_code_placeholder: "Introducir código de pantalla (4 dígitos)",
     btn_connect: "Conectar",
@@ -179,13 +154,6 @@ function setLanguage(lang) {
       }
     }
   });
-  if (hostCodeLabel) {
-    if (hostCodeType === 'permanent') {
-      hostCodeLabel.textContent = dict.code_label_perm || dict.code_label;
-    } else {
-      hostCodeLabel.textContent = dict.code_label_temp || dict.code_label;
-    }
-  }
 }
 
 langSelect?.addEventListener('change', (e) => setLanguage(e.target.value));
@@ -280,32 +248,16 @@ function initHost() {
   conn = null;
 
   const dict = i18nDict[currentLang] || i18nDict['uk'];
-
-  if (hostCodeType === 'permanent') {
-    currentHostCode = '1000';
-    if (btnHostCodePerm) btnHostCodePerm.classList.add('active');
-    if (btnHostCodeTemp) btnHostCodeTemp.classList.remove('active');
-    if (btnRegenerateCode) btnRegenerateCode.classList.add('hidden');
-    if (hostCodeLabel) hostCodeLabel.textContent = dict.code_label_perm || dict.code_label;
-  } else {
-    // 4-значний одноразовий випадковий код (1001-9999)
-    let rand = Math.floor(1000 + Math.random() * 9000).toString();
-    if (rand === '1000') rand = '1001';
-    currentHostCode = rand;
-    if (btnHostCodePerm) btnHostCodePerm.classList.remove('active');
-    if (btnHostCodeTemp) btnHostCodeTemp.classList.add('active');
-    if (btnRegenerateCode) btnRegenerateCode.classList.remove('hidden');
-    if (hostCodeLabel) hostCodeLabel.textContent = dict.code_label_temp || dict.code_label;
-  }
-
-  if (hostCodeEl) hostCodeEl.textContent = currentHostCode;
+  // 4-значний випадковий одноразовий код (1000-9999)
+  const code = Math.floor(1000 + Math.random() * 9000).toString();
+  if (hostCodeEl) hostCodeEl.textContent = code;
   if (hostStatus) {
     hostStatus.textContent = currentLang === 'uk' ? "Створення кімнати..." : (currentLang === 'es' ? "Creando sala..." : "Creating room...");
     hostStatus.className = "status waiting";
   }
 
   try {
-    peer = new Peer('aivtomation-tp-' + currentHostCode);
+    peer = new Peer('aivtomation-tp-' + code);
 
     peer.on('open', () => {
       if (hostStatus) {
@@ -337,15 +289,7 @@ function initHost() {
     peer.on('error', (err) => {
       console.warn("Peer error:", err);
       if (hostStatus) {
-        if (err.type === 'unavailable-id') {
-          hostStatus.textContent = currentLang === 'uk'
-            ? `Код ${currentHostCode} зайнятий на сервері (зачекайте 15 сек або згенеруйте новий)`
-            : (currentLang === 'es'
-              ? `El código ${currentHostCode} está ocupado (espere 15s o genere uno nuevo)`
-              : `Code ${currentHostCode} is occupied (wait 15s or generate a new code)`);
-        } else {
-          hostStatus.textContent = (currentLang === 'uk' ? "Помилка мережі: " : "Network error: ") + err.type;
-        }
+        hostStatus.textContent = (currentLang === 'uk' ? "Помилка мережі: " : "Network error: ") + err.type;
         hostStatus.className = "status error";
       }
     });
@@ -357,26 +301,6 @@ function initHost() {
   }
 }
 
-// Кнопки вибору типу коду (Постійний / Одноразовий)
-btnHostCodePerm?.addEventListener('click', () => {
-  if (hostCodeType === 'permanent' && peer && !peer.destroyed) return;
-  hostCodeType = 'permanent';
-  localStorage.setItem('tp_host_code_type', 'permanent');
-  initHost();
-});
-
-btnHostCodeTemp?.addEventListener('click', () => {
-  hostCodeType = 'temporary';
-  localStorage.setItem('tp_host_code_type', 'temporary');
-  initHost();
-});
-
-btnRegenerateCode?.addEventListener('click', () => {
-  if (hostCodeType === 'temporary') {
-    initHost();
-  }
-});
-
 // Ініціалізація Пульта (Remote)
 function initRemote() {
   if (peer) {
@@ -385,9 +309,8 @@ function initRemote() {
   }
   peer = new Peer(); // Пульту не потрібен специфічний ID
 
-  const savedCode = localStorage.getItem('tp_remote_code') || '1000';
   if (remoteCodeInput) {
-    remoteCodeInput.value = savedCode;
+    remoteCodeInput.value = '';
   }
 
   if (remoteStatus) {
@@ -395,13 +318,6 @@ function initRemote() {
     remoteStatus.className = "status";
   }
 }
-
-btnQuickAdmin?.addEventListener('click', () => {
-  if (remoteCodeInput) {
-    remoteCodeInput.value = '1000';
-    remoteCodeInput.focus();
-  }
-});
 
 remoteCodeInput?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
@@ -419,8 +335,6 @@ btnConnect?.addEventListener('click', () => {
     alert(currentLang === 'uk' ? "Введіть 4 цифри" : (currentLang === 'es' ? "Introduzca 4 dígitos" : "Enter 4 digits"));
     return;
   }
-
-  localStorage.setItem('tp_remote_code', code);
 
   if (remoteStatus) {
     remoteStatus.textContent = currentLang === 'uk' ? "Підключення..." : (currentLang === 'es' ? "Conectando..." : "Connecting...");
@@ -652,7 +566,7 @@ function startPrompter() {
         type: 'START', 
         text: text,
         globalSpeedMultiplier: globalSpeedMultiplier,
-        globalSpeedSliderValue: globalSpeedSlider ? globalSpeedSlider.value : 50
+        globalSpeedSliderValue: globalSpeedSlider ? globalSpeedSlider.value : 41
       });
     } else {
       // Звичайний режим: на весь екран
@@ -663,7 +577,7 @@ function startPrompter() {
         text: text, 
         percentage: getScrollPercentage(),
         globalSpeedMultiplier: globalSpeedMultiplier,
-        globalSpeedSliderValue: globalSpeedSlider ? globalSpeedSlider.value : 50
+        globalSpeedSliderValue: globalSpeedSlider ? globalSpeedSlider.value : 41
       });
     }
     
