@@ -81,6 +81,7 @@ def remove_silence_from_video(input_video: str, output_video: str, min_silence_l
         *get_color_args(),
         "-c:a", "aac",
         "-b:a", "192k",
+        "-movflags", "+faststart",
         output_video
     ]
 

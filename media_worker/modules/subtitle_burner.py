@@ -286,6 +286,7 @@ def burn_subtitles_into_video(input_video: str, srt_content: str, output_video: 
         "-crf", "20",
         *color_args,
         "-c:a", "copy",
+        "-movflags", "+faststart",
         os.path.abspath(output_video)
     ]
 
@@ -305,6 +306,7 @@ def burn_subtitles_into_video(input_video: str, srt_content: str, output_video: 
                 *color_args,
                 "-c:a", "aac",
                 "-b:a", "192k",
+                "-movflags", "+faststart",
                 os.path.abspath(output_video)
             ]
             subprocess.run(cmd_burn_fb, cwd=temp_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)

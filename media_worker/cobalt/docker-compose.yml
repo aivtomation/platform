@@ -1,0 +1,11 @@
+services:
+  cobalt:
+    image: ghcr.io/imputnet/cobalt:10
+    container_name: aiv-cobalt
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9000:9000"
+    environment:
+      API_URL: "http://127.0.0.1:9000/"
+    mem_limit: 512m
+    cpus: 1.0

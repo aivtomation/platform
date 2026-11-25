@@ -113,10 +113,12 @@ def render_cover_with_pillow(frame_path: str, cover_image_path: str, text: str, 
 
     lines = wrapped_lines[:4]
 
+    line_bboxes = []
     line_heights = []
     line_widths = []
     for line in lines:
         bbox = dummy_draw.textbbox((0, 0), line, font=font)
+        line_bboxes.append(bbox)
         line_widths.append(bbox[2] - bbox[0])
         line_heights.append(bbox[3] - bbox[1])
 
@@ -129,14 +131,27 @@ def render_cover_with_pillow(frame_path: str, cover_image_path: str, text: str, 
     box_radius = int(28 * scale)
     stroke_width = int(float(typo.get("stroke_width", 4)))
 
-    total_text_h = sum(line_heights) + (len(lines) - 1) * line_gap
+    # Compute exact ink bounds for all lines to achieve pixel-perfect vertical centering
+    y_rel = 0
+    line_rel_y = []
+    for i in range(len(lines)):
+        line_rel_y.append(y_rel)
+        y_rel += line_heights[i] + line_gap
+
+    ink_top = min(line_rel_y[i] + line_bboxes[i][1] for i in range(len(lines)))
+    ink_bottom = max(line_rel_y[i] + line_bboxes[i][3] for i in range(len(lines)))
+    ink_h = ink_bottom - ink_top
+
     card_w = max(line_widths) + (pad_x * 2)
-    card_h = total_text_h + (pad_y * 2)
+    card_h = ink_h + (pad_y * 2)
 
     card_left = (1080 - card_w) // 2
     card_top = max(40, target_center_y - (card_h // 2))
     card_right = card_left + card_w
     card_bottom = card_top + card_h
+
+    # Starting text Y position shifted up so that top and bottom padding are mathematically identical
+    start_text_y = card_top + pad_y - ink_top
 
     def draw_elements(d):
         if decor_mode in ("box", "badge"):
@@ -155,19 +170,18 @@ def render_cover_with_pillow(frame_path: str, cover_image_path: str, text: str, 
                 width=5
             )
 
-        curr_y = card_top + pad_y
         for i, line in enumerate(lines):
             w = line_widths[i]
             x = (1080 - w) // 2
+            y = start_text_y + line_rel_y[i]
             d.text(
-                (x, curr_y),
+                (x, y),
                 line,
                 font=font,
                 fill=text_color,
                 stroke_width=stroke_width,
                 stroke_fill=text_stroke_color
             )
-            curr_y += line_heights[i] + line_gap
 
     # 1. Render thumbnail with author frame
     if frame_path and os.path.exists(frame_path):
@@ -299,6 +313,7 @@ def generate_and_apply_cover(input_video: str, output_video: str, caption_or_top
             "-crf", "22",
             *color_args,
             "-c:a", "copy",
+            "-movflags", "+faststart",
             output_video
         ]
     else:
@@ -318,6 +333,7 @@ def generate_and_apply_cover(input_video: str, output_video: str, caption_or_top
             "-preset", "veryfast",
             "-crf", "22",
             *color_args,
+            "-movflags", "+faststart",
             output_video
         ]
 
